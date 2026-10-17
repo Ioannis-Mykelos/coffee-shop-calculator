@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Netlify's Next.js runtime (OpenNext adapter). Netlify also adds this
+# automatically for Next.js sites; declaring it keeps builds explicit.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"

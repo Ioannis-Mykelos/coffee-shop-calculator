@@ -1,0 +1,102 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --font-sans: var(--font-plex-sans), system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), sans-serif;
+  --font-mono: var(--font-plex-mono), monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-brand-soft: var(--brand-soft);
+  --color-brand-ink: var(--brand-ink);
+  --color-subtle: var(--subtle);
+  --color-line: var(--line);
+  --color-track: var(--track);
+  --color-ink-2: var(--ink-2);
+  --color-placeholder: var(--placeholder);
+  --color-good: var(--good);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: #f3f2f8;
+  --foreground: #1e1b3a;
+  --card: #ffffff;
+  --card-foreground: #1e1b3a;
+  --primary: #1e1b3a;
+  --primary-foreground: #ffffff;
+  --secondary: #ffffff;
+  --secondary-foreground: #1e1b3a;
+  --muted: #f1f0f6;
+  --muted-foreground: #5a5772;
+  --accent: #f1f0f6;
+  --accent-foreground: #1e1b3a;
+  --destructive: #b23a57;
+  --border: #dedcea;
+  --input: #cbc8da;
+  --ring: #4b3fd1;
+
+  --brand: #4b3fd1;
+  --brand-strong: #3428a8;
+  --brand-soft: #eeecfc;
+  --brand-ink: #45407a;
+  --subtle: #faf9fd;
+  --line: #e8e6f0;
+  --track: #ecebf3;
+  --ink-2: #403d57;
+  --placeholder: #8a879e;
+  --good: #177a6b;
+
+  /* Expense categories */
+  --chart-1: #4b3fd1;
+  --chart-2: #f2a23a;
+  --chart-3: #1f9e8a;
+  --chart-4: #d9486b;
+  --chart-5: #9a97ae;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  a {
+    @apply text-brand hover:text-brand-strong;
+  }
+  input::placeholder {
+    color: var(--placeholder);
+  }
+}
