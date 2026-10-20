@@ -44,6 +44,7 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
 }
 
 :root {
@@ -82,6 +83,7 @@
   --chart-3: #1f9e8a;
   --chart-4: #d9486b;
   --chart-5: #9a97ae;
+  --chart-6: #8a5a2b;
 }
 
 @layer base {

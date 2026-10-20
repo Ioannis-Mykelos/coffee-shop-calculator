@@ -188,6 +188,7 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
   lineCat("premises");
   lineCat("utilities");
   for (const it of m.supplies ?? []) ex.push(["Supplies", it.label || "", num(it.qty), it.unit || "", M(num(it.price)), M(num(it.qty) * num(it.price))]);
+  for (const it of m.consumables ?? []) ex.push(["Consumables", it.label || "", num(it.qty), it.unit || "", M(num(it.price)), M(num(it.qty) * num(it.price))]);
   lineCat("other");
   ex.push([], [B("Total (excluding staff)"), "", "", "", "", { v: t.total - t.staff, s: S_MONEY_BOLD }]);
 
@@ -215,7 +216,7 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
     ["Summary", sum, [42, 18, 16]],
     ["Expenses", ex, [18, 30, 12, 10, 16, 16]],
     ["Staff", st, [24, 12, 12, 16, 14, 24, 20, 24, 18]],
-    ["History", hi, [20, 18, 14, 14, 14, 14, 16, 16, 16]],
+    ["History", hi, [20, 18, 14, 14, 14, 14, 14, 16, 16, 16]],
   ];
   const NS = "http://schemas.openxmlformats.org/";
   const head = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';

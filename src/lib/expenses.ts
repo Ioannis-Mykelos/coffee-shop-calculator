@@ -14,7 +14,7 @@ export function isCurrency(v: unknown): v is Currency {
 
 export const STORE_KEY = "my-coffee-shop-eur-v1";
 
-export type CategoryKey = "premises" | "utilities" | "supplies" | "staff" | "other";
+export type CategoryKey = "premises" | "utilities" | "supplies" | "consumables" | "staff" | "other";
 export type LineCategoryKey = "premises" | "utilities" | "other";
 
 export interface Category {
@@ -28,7 +28,8 @@ export interface Category {
 export const CATEGORIES: Category[] = [
   { key: "premises", label: "Rent & premises", color: "var(--chart-1)", title: "Rent & premises", desc: "Fixed costs for the space itself: rent, shared charges and premises insurance." },
   { key: "utilities", label: "Utilities", color: "var(--chart-2)", title: "Utilities", desc: "Bills that change month to month. Type in this month’s electricity, water, heating and internet." },
-  { key: "supplies", label: "Supplies", color: "var(--chart-3)", title: "Supplies & consumables", desc: "To-go cups, lids, beans, milk, sugar and the rest. Quantity × price per unit." },
+  { key: "supplies", label: "Supplies", color: "var(--chart-3)", title: "Coffee supplies", desc: "To-go cups, lids, beans, milk, sugar and the rest. Quantity × price per unit." },
+  { key: "consumables", label: "Consumables", color: "var(--chart-6)", title: "Consumables", desc: "Food and drinks you buy in to sell: juice, overnight pudding, pastries and so on. Quantity × price per unit." },
   { key: "staff", label: "Staff", color: "var(--chart-4)", title: "Staff", desc: "One row per employee category. Pay is hours × hourly rate, plus insurance and employer contributions." },
   { key: "other", label: "Other", color: "var(--chart-5)", title: "Other expenses", desc: "Everything else: card fees, cleaning, repairs, marketing, software, accountant." },
 ];
@@ -52,6 +53,8 @@ export interface MonthData {
   premises: LineItem[];
   utilities: LineItem[];
   supplies: SupplyItem[];
+  /** Food and drinks bought in for resale; same shape as supplies. */
+  consumables: SupplyItem[];
   staff: StaffItem[];
   other: LineItem[];
   days: string;
@@ -139,6 +142,11 @@ export function sampleMonth(): MonthData {
       { id: uid(), label: "Sugar & sweeteners", qty: "1", unit: "lot", price: "60" },
       { id: uid(), label: "Napkins & stirrers", qty: "1", unit: "lot", price: "40" },
     ],
+    consumables: [
+      { id: uid(), label: "Orange juice", qty: "200", unit: "bottles", price: "1.2" },
+      { id: uid(), label: "Overnight pudding", qty: "150", unit: "pcs", price: "0.9" },
+      { id: uid(), label: "Pastries", qty: "600", unit: "pcs", price: "0.8" },
+    ],
     staff: [
       { id: uid(), role: "Barista", type: "FT", count: "2", hours: "160", rate: "23", ins: "10" },
       { id: uid(), role: "Barista", type: "PT", count: "3", hours: "60", rate: "21", ins: "10" },
@@ -185,6 +193,7 @@ export function withDefaults(m: MonthData): MonthData {
   return {
     ...p,
     revenue: typeof p.revenue === "string" ? p.revenue : "",
+    consumables: Array.isArray(p.consumables) ? p.consumables : [],
     coffeesPerCustomer: typeof p.coffeesPerCustomer === "string" ? p.coffeesPerCustomer : "1",
     extrasPerCustomer: typeof p.extrasPerCustomer === "string" ? p.extrasPerCustomer : "",
     cup: p.cup && Array.isArray(p.cup.recipe) ? { ...p.cup, vat: p.cup.vat ?? "" } : defaultCup(p.supplies ?? []),
@@ -198,17 +207,20 @@ export function staffLine(x: StaffItem) {
   return { gross, ins, count, total: count * (gross + ins) };
 }
 
+const sumQty = (xs: SupplyItem[] = []) => xs.reduce((a, x) => a + num(x.qty) * num(x.price), 0);
+
 export function computeTotals(m: MonthData): Totals {
   const sumAmt = (xs: LineItem[] = []) => xs.reduce((a, x) => a + num(x.amount), 0);
   const t = {
     premises: sumAmt(m.premises),
     utilities: sumAmt(m.utilities),
     other: sumAmt(m.other),
-    supplies: (m.supplies ?? []).reduce((a, x) => a + num(x.qty) * num(x.price), 0),
+    supplies: sumQty(m.supplies),
+    consumables: sumQty(m.consumables),
     staff: (m.staff ?? []).reduce((a, x) => a + staffLine(x).total, 0),
     total: 0,
   };
-  t.total = t.premises + t.utilities + t.other + t.supplies + t.staff;
+  t.total = t.premises + t.utilities + t.other + t.supplies + t.consumables + t.staff;
   return t;
 }
 

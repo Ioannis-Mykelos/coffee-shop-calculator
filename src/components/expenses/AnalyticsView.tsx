@@ -98,7 +98,7 @@ export function AnalyticsView({ data, month, fmt, currency }: { data: MonthsData
   for (const k of Object.keys(data).sort()) {
     const b = bucketOf(period, k), md = data[k], tt = computeTotals(md)
     if (!groups[b]) {
-      groups[b] = { months: [], t: { premises: 0, utilities: 0, supplies: 0, staff: 0, other: 0, total: 0 }, cust: 0, days: 0, sales: 0, salesCost: 0, salesMonths: 0 }
+      groups[b] = { months: [], t: { premises: 0, utilities: 0, supplies: 0, consumables: 0, staff: 0, other: 0, total: 0 }, cust: 0, days: 0, sales: 0, salesCost: 0, salesMonths: 0 }
       order.push(b)
     }
     const g = groups[b]

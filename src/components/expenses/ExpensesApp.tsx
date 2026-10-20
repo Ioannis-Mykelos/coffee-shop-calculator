@@ -59,6 +59,7 @@ export function ExpensesApp() {
     mutate((mm) => {
       for (const k of LINE_CATEGORIES) mm[k].forEach((x) => (x.amount = ""))
       mm.supplies.forEach((x) => (x.qty = ""))
+      mm.consumables.forEach((x) => (x.qty = ""))
       mm.staff.forEach((x) => (x.count = ""))
       mm.revenue = ""
     })
@@ -107,6 +108,9 @@ export function ExpensesApp() {
                     <LineItemsEditor month={m} list={tab as LineCategoryKey} mutate={mutate} />
                   )}
                   {tab === "supplies" && <SuppliesEditor month={m} mutate={mutate} fmt={fmt} />}
+                  {tab === "consumables" && (
+                    <SuppliesEditor month={m} list="consumables" mutate={mutate} fmt={fmt} placeholder="e.g. Croissant" addLabel="+ Add consumable" />
+                  )}
                   {tab === "staff" && <StaffEditor month={m} mutate={mutate} fmt={fmt} />}
 
                   <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 text-[13px] text-muted-foreground">
