@@ -11,6 +11,7 @@ import {
   computeTotals,
   monthName,
   monthShort,
+  priceFormatter,
   shiftMonth,
 } from "@/lib/expenses"
 
@@ -68,33 +69,71 @@ export function BreakdownCard({ totals, fmt }: { totals: Totals; fmt: Fmt }) {
   )
 }
 
-export function BreakEvenCard({ month, total, fmt, mutate }: { month: MonthData; total: number; fmt: Fmt; mutate: (fn: (m: MonthData) => void) => void }) {
+const pctLabel = (v: number) => (v * 100).toFixed(1).replace(/\.0$/, "").replace(".", ",") + "%"
+
+export function BreakEvenCard({ month, total, fmt, currency, mutate }: { month: MonthData; total: number; fmt: Fmt; currency: Currency; mutate: (fn: (m: MonthData) => void) => void }) {
   const be = breakEven(month, total)
+  const price = priceFormatter(currency)
+  const symbol = price(0).replace(/[\d\s.,\u00a0]/g, "") || currency
   return (
     <Card>
       <CardTitle>Break-even check</CardTitle>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Opening days this month">
+      <div className="grid grid-cols-[96px_minmax(0,1fr)] items-end gap-3">
+        <Field label="Opening days">
           <NumberInput
             inputMode="numeric"
+            maxLength={2}
             value={month.days}
             onChange={(e) => {
-              const v = e.target.value
+              const d = e.target.value.replace(/\D/g, "")
+              const v = d && Math.min(+d, 31).toString()
               mutate((m) => void (m.days = v))
             }}
           />
         </Field>
-        <Field label="Avg. sale per customer, excl. VAT">
+        <Field label="Avg. coffees per customer">
           <NumberInput
-            value={month.avgSale}
+            value={month.coffeesPerCustomer}
             onChange={(e) => {
               const v = e.target.value
-              mutate((m) => void (m.avgSale = v))
+              mutate((m) => void (m.coffeesPerCustomer = v))
             }}
           />
         </Field>
       </div>
+      <div className="flex justify-between gap-3 text-sm">
+        <span>
+          Coffee spend per customer
+          <span className="block text-[13px] text-muted-foreground">
+            {be.coffees.toLocaleString("en-GB")} × {price(be.cupPrice)} (price for the customer, incl. VAT)
+          </span>
+        </span>
+        <strong className="font-mono font-medium">{price(be.coffeeSpend)}</strong>
+      </div>
+
+      <div className="flex flex-col gap-2 rounded-xl border border-line bg-subtle p-3">
+        <div className="text-sm font-semibold">Other consumables</div>
+        <Field label={`Juice, pastries etc. per customer, incl. VAT (${symbol})`}>
+          <NumberInput
+            value={month.extrasPerCustomer}
+            onChange={(e) => {
+              const v = e.target.value
+              mutate((m) => void (m.extrasPerCustomer = v))
+            }}
+          />
+        </Field>
+        <span className="text-[13px] text-muted-foreground">VAT {pctLabel(be.extrasVat)}, set under Consumables pricing.</span>
+      </div>
+
       <div className="flex flex-col gap-1.5 text-sm">
+        <div className="flex justify-between">
+          <span>Avg. sale per customer, incl. VAT</span>
+          <strong className="font-mono font-medium">{price(be.avgGross)}</strong>
+        </div>
+        <div className="flex justify-between">
+          <span>Other consumables per customer</span>
+          <strong className="font-mono font-medium">{price(be.extras)}</strong>
+        </div>
         <div className="flex justify-between">
           <span>Cost per opening day</span>
           <strong className="font-mono font-medium">{fmt(be.perDay)}</strong>

@@ -26,7 +26,7 @@ function RemoveButton({ label, onClick }: { label: string; onClick: () => void }
 }
 
 /** Update one field of one item in a list of the current month. */
-function setField<K extends "premises" | "utilities" | "other" | "supplies" | "staff">(
+function setField<K extends "premises" | "utilities" | "other" | "supplies" | "consumables" | "staff">(
   mutate: Mutate,
   list: K,
   id: string,
@@ -41,7 +41,7 @@ function setField<K extends "premises" | "utilities" | "other" | "supplies" | "s
   }
 }
 
-function removeItem(mutate: Mutate, list: "premises" | "utilities" | "other" | "supplies" | "staff", id: string) {
+function removeItem(mutate: Mutate, list: "premises" | "utilities" | "other" | "supplies" | "consumables" | "staff", id: string) {
   return () =>
     mutate((m) => {
       ;(m as unknown as Record<string, { id: string }[]>)[list] = m[list].filter((x) => x.id !== id)
@@ -73,22 +73,37 @@ export function LineItemsEditor({ month, list, mutate }: { month: MonthData; lis
   )
 }
 
-export function SuppliesEditor({ month, mutate, fmt }: { month: MonthData; mutate: Mutate; fmt: Fmt }) {
+/** Quantity × price rows; used for Supplies and Consumables. */
+export function SuppliesEditor({
+  month,
+  mutate,
+  fmt,
+  list = "supplies",
+  placeholder = "e.g. Oat milk",
+  addLabel = "+ Add supply",
+}: {
+  month: MonthData
+  mutate: Mutate
+  fmt: Fmt
+  list?: "supplies" | "consumables"
+  placeholder?: string
+  addLabel?: string
+}) {
   return (
     <div className="flex flex-col gap-2.5">
-      {month.supplies.map((it) => (
+      {month[list].map((it) => (
         <div key={it.id} className={rowClass}>
           <Field label="Item" className="flex-[1_1_200px]">
-            <Input value={it.label} onChange={setField(mutate, "supplies", it.id, "label")} placeholder="e.g. Oat milk" />
+            <Input value={it.label} onChange={setField(mutate, list, it.id, "label")} placeholder={placeholder} />
           </Field>
           <Field label="Quantity" className="flex-[0_1_100px]">
-            <NumberInput className="px-2.5" value={it.qty} onChange={setField(mutate, "supplies", it.id, "qty")} />
+            <NumberInput className="px-2.5" value={it.qty} onChange={setField(mutate, list, it.id, "qty")} />
           </Field>
           <Field label="Unit" className="flex-[0_1_80px]">
-            <Input className="px-2.5" value={it.unit} onChange={setField(mutate, "supplies", it.id, "unit")} placeholder="pcs" />
+            <Input className="px-2.5" value={it.unit} onChange={setField(mutate, list, it.id, "unit")} placeholder="pcs" />
           </Field>
           <Field label="Price per unit" className="flex-[0_1_120px]">
-            <NumberInput className="px-2.5" value={it.price} onChange={setField(mutate, "supplies", it.id, "price")} />
+            <NumberInput className="px-2.5" value={it.price} onChange={setField(mutate, list, it.id, "price")} />
           </Field>
           <div className="flex flex-[0_1_120px] flex-col gap-1 text-xs text-muted-foreground">
             Line total
@@ -96,15 +111,15 @@ export function SuppliesEditor({ month, mutate, fmt }: { month: MonthData; mutat
               {fmt(num(it.qty) * num(it.price))}
             </div>
           </div>
-          <RemoveButton label={it.label} onClick={removeItem(mutate, "supplies", it.id)} />
+          <RemoveButton label={it.label} onClick={removeItem(mutate, list, it.id)} />
         </div>
       ))}
       <Button
         variant="dashed"
         className="self-start px-[18px]"
-        onClick={() => mutate((m) => void m.supplies.push({ id: uid(), label: "", qty: "", unit: "pcs", price: "" }))}
+        onClick={() => mutate((m) => void m[list].push({ id: uid(), label: "", qty: "", unit: "pcs", price: "" }))}
       >
-        + Add supply
+        {addLabel}
       </Button>
     </div>
   )

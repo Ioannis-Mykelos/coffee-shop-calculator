@@ -13,6 +13,8 @@ import {
   monthLabel,
   monthShort,
   num,
+  breakEven,
+  profitOf,
 } from "@/lib/expenses"
 import { cn } from "@/lib/utils"
 
@@ -32,6 +34,10 @@ interface Bucket {
   t: Record<CategoryKey | "total", number>
   cust: number
   days: number
+  /** Sales, and the expenses of only those months that have sales entered. */
+  sales: number
+  salesCost: number
+  salesMonths: number
 }
 
 function bucketOf(period: Period, k: string) {
@@ -64,6 +70,19 @@ function change(hasPrev: boolean, cur: number, prev: number) {
   return { text: (v > 0 ? "▲ " : "▼ ") + pct, color: v > 0 ? UP : DOWN }
 }
 
+function profitKpi(g: Bucket, fmt: (n: number) => string) {
+  if (!g.salesMonths) return { label: "Profit", value: "—", sub: "Enter actual sales to see profit", color: undefined }
+  const p = g.sales - g.salesCost
+  const margin = g.sales > 0 ? ((p / g.sales) * 100).toFixed(1).replace(".", ",") + "% margin" : "No sales"
+  const n = g.months.length
+  return {
+    label: p < 0 ? "Loss" : "Profit",
+    value: fmt(Math.abs(p)),
+    sub: `${margin}${g.salesMonths < n ? ` · ${g.salesMonths} of ${n} months with sales` : ""}`,
+    color: p < 0 ? UP : DOWN,
+  }
+}
+
 const tabClass =
   "min-h-11 cursor-pointer rounded-lg px-4 text-sm font-semibold outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
 
@@ -79,14 +98,20 @@ export function AnalyticsView({ data, month, fmt, currency }: { data: MonthsData
   for (const k of Object.keys(data).sort()) {
     const b = bucketOf(period, k), md = data[k], tt = computeTotals(md)
     if (!groups[b]) {
-      groups[b] = { months: [], t: { premises: 0, utilities: 0, supplies: 0, staff: 0, other: 0, total: 0 }, cust: 0, days: 0 }
+      groups[b] = { months: [], t: { premises: 0, utilities: 0, supplies: 0, consumables: 0, staff: 0, other: 0, total: 0 }, cust: 0, days: 0, sales: 0, salesCost: 0, salesMonths: 0 }
       order.push(b)
     }
     const g = groups[b]
     g.months.push({ key: k, total: tt.total })
     for (const c of CATEGORIES) g.t[c.key] += tt[c.key]
     g.t.total += tt.total
-    const a = num(md.avgSale), dd = num(md.days)
+    const p = profitOf(md, tt.total)
+    if (p) {
+      g.sales += p.revenue
+      g.salesCost += tt.total
+      g.salesMonths++
+    }
+    const a = breakEven(md, tt.total).avg, dd = num(md.days)
     if (a > 0 && dd > 0) {
       g.cust += tt.total / a
       g.days += dd
@@ -119,6 +144,7 @@ export function AnalyticsView({ data, month, fmt, currency }: { data: MonthsData
       color: totChg.color,
     },
     { label: "Biggest cost", value: big.label, sub: `${fmt(sg.t[big.key])} · ${share(sg.t[big.key])}% of total`, color: undefined },
+    profitKpi(sg, fmt),
     { label: "Customers needed / day", value: sg.days ? Math.ceil(sg.cust / sg.days).toLocaleString("en-GB") : "—", sub: "To cover all costs", color: undefined },
   ]
 
@@ -165,7 +191,7 @@ export function AnalyticsView({ data, month, fmt, currency }: { data: MonthsData
         </div>
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-4">
         {kpis.map((k) => (
           <div key={k.label} className="flex flex-col gap-1 rounded-2xl border bg-card p-[18px]">
             <Eyebrow>{k.label}</Eyebrow>

@@ -6,8 +6,11 @@ import {
   type MonthsData,
   breakEven,
   computeTotals,
+  consumablePrices,
+  cupCost,
   monthLabel,
   num,
+  profitOf,
   shiftMonth,
   staffLine,
   staffSummary,
@@ -138,10 +141,52 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
   sum.push(
     [H("Break-even"), H("")],
     ["Opening days", be.days],
+    ["Coffees per customer", be.coffees],
+    ["Coffee price for the customer (incl. VAT)", M(be.cupPrice)],
+    ["Coffee spend per customer (incl. VAT)", M(be.coffeeSpend)],
+    ["Other consumables per customer (incl. VAT)", M(be.extras)],
+    ["Average sale per customer (incl. VAT)", M(be.avgGross)],
+    ["VAT", { v: be.vat, s: S_PCT }],
     ["Average sale per customer (excl. VAT)", M(be.avg)],
     ["Cost per opening day", M(be.perDay)],
     ["Customers needed this month", be.customersMonth],
     ["Customers needed per day", be.customersDay],
+    [],
+  );
+  const p = profitOf(m, t.total);
+  if (p) {
+    sum.push(
+      [H("Sales & profit"), H("")],
+      ["Actual sales (excl. VAT)", M(p.revenue)],
+      ["Expenses", M(t.total)],
+      [B(p.profit < 0 ? "Loss" : "Profit"), { v: p.profit, s: S_MONEY_BOLD }],
+      ["Profit margin", { v: p.margin, s: S_PCT }],
+      [],
+    );
+  }
+  const c = cupCost(m);
+  sum.push([H("Cost per cup"), H("")]);
+  for (const l of c.lines) if (l.supply) sum.push([`${l.supply.label} (${num(l.qty)} ${l.supply.unit})`, { v: l.cost, s: S_MONEY }]);
+  sum.push(
+    [B("Ingredients cost per cup"), { v: c.ingredients, s: S_MONEY_BOLD }],
+    ["Margin on cost", { v: c.margin, s: S_PCT }],
+    ["Margin per cup", { v: c.profit, s: S_MONEY }],
+    [B("Final price (excl. VAT)"), { v: c.price, s: S_MONEY_BOLD }],
+    ["VAT", { v: c.vat, s: S_PCT }],
+    ["VAT per cup", { v: c.vatAmount, s: S_MONEY }],
+    [B("Customer price (incl. VAT)"), { v: c.priceInclVat, s: S_MONEY_BOLD }],
+  );
+  const cp = consumablePrices(m);
+  if (cp.items.length) {
+    sum.push(
+      [],
+      [H("Consumables pricing"), H("Cost"), H("Excl. VAT"), H("Customer price")],
+      ["Margin on cost", { v: cp.margin, s: S_PCT }],
+      ["VAT", { v: cp.vat, s: S_PCT }],
+    );
+    for (const x of cp.items) sum.push([x.unit ? `${x.label} (per ${x.unit})` : x.label, { v: x.cost, s: S_MONEY }, { v: x.price, s: S_MONEY }, { v: x.priceInclVat, s: S_MONEY_BOLD }]);
+  }
+  sum.push(
     [],
     ["Generated " + new Date().toLocaleString("en-GB")]
   );
@@ -154,6 +199,7 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
   lineCat("premises");
   lineCat("utilities");
   for (const it of m.supplies ?? []) ex.push(["Supplies", it.label || "", num(it.qty), it.unit || "", M(num(it.price)), M(num(it.qty) * num(it.price))]);
+  for (const it of m.consumables ?? []) ex.push(["Consumables", it.label || "", num(it.qty), it.unit || "", M(num(it.price)), M(num(it.qty) * num(it.price))]);
   lineCat("other");
   ex.push([], [B("Total (excluding staff)"), "", "", "", "", { v: t.total - t.staff, s: S_MONEY_BOLD }]);
 
@@ -164,17 +210,24 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
   }
   st.push([], [B("Total staff cost"), "", ft + pt, "", "", "", "", "", { v: t.staff, s: S_MONEY_BOLD }]);
 
-  const hi: Row[] = [[H("Month"), ...CATEGORIES.map((c) => H(c.label)), H("Total")]];
+  const hi: Row[] = [[H("Month"), ...CATEGORIES.map((c) => H(c.label)), H("Total"), H("Sales"), H("Profit")]];
   for (const key of Object.keys(data).sort()) {
     const tt = computeTotals(data[key]);
-    hi.push([key === month ? B(monthLabel(key)) : monthLabel(key), ...CATEGORIES.map((c) => M(tt[c.key])), { v: tt.total, s: S_MONEY_BOLD }]);
+    const pp = profitOf(data[key], tt.total);
+    hi.push([
+      key === month ? B(monthLabel(key)) : monthLabel(key),
+      ...CATEGORIES.map((c) => M(tt[c.key])),
+      { v: tt.total, s: S_MONEY_BOLD },
+      pp ? M(pp.revenue) : "",
+      pp ? M(pp.profit) : "",
+    ]);
   }
 
   const sheets: [string, Row[], number[]][] = [
-    ["Summary", sum, [42, 18, 16]],
+    ["Summary", sum, [42, 18, 16, 16]],
     ["Expenses", ex, [18, 30, 12, 10, 16, 16]],
     ["Staff", st, [24, 12, 12, 16, 14, 24, 20, 24, 18]],
-    ["History", hi, [20, 18, 14, 14, 14, 14, 16]],
+    ["History", hi, [20, 18, 14, 14, 14, 14, 14, 16, 16, 16]],
   ];
   const NS = "http://schemas.openxmlformats.org/";
   const head = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';

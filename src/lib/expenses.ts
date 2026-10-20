@@ -14,7 +14,7 @@ export function isCurrency(v: unknown): v is Currency {
 
 export const STORE_KEY = "my-coffee-shop-eur-v1";
 
-export type CategoryKey = "premises" | "utilities" | "supplies" | "staff" | "other";
+export type CategoryKey = "premises" | "utilities" | "supplies" | "consumables" | "staff" | "other";
 export type LineCategoryKey = "premises" | "utilities" | "other";
 
 export interface Category {
@@ -28,7 +28,8 @@ export interface Category {
 export const CATEGORIES: Category[] = [
   { key: "premises", label: "Rent & premises", color: "var(--chart-1)", title: "Rent & premises", desc: "Fixed costs for the space itself: rent, shared charges and premises insurance." },
   { key: "utilities", label: "Utilities", color: "var(--chart-2)", title: "Utilities", desc: "Bills that change month to month. Type in this month’s electricity, water, heating and internet." },
-  { key: "supplies", label: "Supplies", color: "var(--chart-3)", title: "Supplies & consumables", desc: "To-go cups, lids, beans, milk, sugar and the rest. Quantity × price per unit." },
+  { key: "supplies", label: "Supplies", color: "var(--chart-3)", title: "Coffee supplies", desc: "To-go cups, lids, beans, milk, sugar and the rest. Quantity × price per unit." },
+  { key: "consumables", label: "Consumables", color: "var(--chart-6)", title: "Consumables", desc: "Food and drinks you buy in to sell: juice, overnight pudding, pastries and so on. Quantity × price per unit." },
   { key: "staff", label: "Staff", color: "var(--chart-4)", title: "Staff", desc: "One row per employee category. Pay is hours × hourly rate, plus insurance and employer contributions." },
   { key: "other", label: "Other", color: "var(--chart-5)", title: "Other expenses", desc: "Everything else: card fees, cleaning, repairs, marketing, software, accountant." },
 ];
@@ -38,15 +39,34 @@ export const LINE_CATEGORIES: LineCategoryKey[] = ["premises", "utilities", "oth
 export interface LineItem { id: string; label: string; amount: string }
 export interface SupplyItem { id: string; label: string; qty: string; unit: string; price: string }
 export interface StaffItem { id: string; role: string; type: "FT" | "PT"; count: string; hours: string; rate: string; ins: string }
+/** How much of one supply item goes into one cup, in that item's unit. */
+export interface RecipeItem { id: string; supplyId: string; qty: string }
+export interface CupSettings {
+  recipe: RecipeItem[];
+  /** Margin added on top of the ingredients cost, in % (120 means price = cost × 2.2). */
+  margin: string;
+  /** VAT rate added on top of the final price, in %. */
+  vat: string;
+}
 
 export interface MonthData {
   premises: LineItem[];
   utilities: LineItem[];
   supplies: SupplyItem[];
+  /** Food and drinks bought in for resale; same shape as supplies. */
+  consumables: SupplyItem[];
   staff: StaffItem[];
   other: LineItem[];
   days: string;
-  avgSale: string;
+  /** Average coffees per customer; each is sold at the cup price incl. VAT. */
+  coffeesPerCustomer: string;
+  /** Average spend per customer on other consumables (juice, pastries…), incl. VAT. */
+  extrasPerCustomer: string;
+  /** Actual sales this month, excl. VAT. Blank until the month's takings are known. */
+  revenue: string;
+  cup: CupSettings;
+  /** Selling consumables: margin on cost and VAT, both in %. */
+  consumablePricing: { margin: string; vat: string };
 }
 
 /** Keyed by "YYYY-MM". */
@@ -93,13 +113,18 @@ export function currencyFormatter(cur: Currency = DEFAULT_CURRENCY) {
   const nf = new Intl.NumberFormat(LOCALES[cur], { style: "currency", currency: cur, maximumFractionDigits: 0 });
   return (n: number) => nf.format(Math.round(n));
 }
+/** Like currencyFormatter but with cents, for per-cup prices. */
+export function priceFormatter(cur: Currency = DEFAULT_CURRENCY) {
+  const nf = new Intl.NumberFormat(LOCALES[cur], { style: "currency", currency: cur, minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (n: number) => nf.format(n);
+}
 export function compactFormatter(cur: Currency = DEFAULT_CURRENCY) {
   const cf = new Intl.NumberFormat("en-GB", { style: "currency", currency: cur, notation: "compact", maximumFractionDigits: 1 });
   return (n: number) => cf.format(n);
 }
 
 export function sampleMonth(): MonthData {
-  return {
+  const m: Omit<MonthData, "cup" | "consumablePricing"> = {
     premises: [
       { id: uid(), label: "Monthly rent", amount: "3000" },
       { id: uid(), label: "Shared building charges", amount: "250" },
@@ -119,6 +144,11 @@ export function sampleMonth(): MonthData {
       { id: uid(), label: "Sugar & sweeteners", qty: "1", unit: "lot", price: "60" },
       { id: uid(), label: "Napkins & stirrers", qty: "1", unit: "lot", price: "40" },
     ],
+    consumables: [
+      { id: uid(), label: "Orange juice", qty: "200", unit: "bottles", price: "1.2" },
+      { id: uid(), label: "Overnight pudding", qty: "150", unit: "pcs", price: "0.9" },
+      { id: uid(), label: "Pastries", qty: "600", unit: "pcs", price: "0.8" },
+    ],
     staff: [
       { id: uid(), role: "Barista", type: "FT", count: "2", hours: "160", rate: "23", ins: "10" },
       { id: uid(), role: "Barista", type: "PT", count: "3", hours: "60", rate: "21", ins: "10" },
@@ -133,7 +163,43 @@ export function sampleMonth(): MonthData {
       { id: uid(), label: "Accountant", amount: "200" },
     ],
     days: "30",
-    avgSale: "6",
+    coffeesPerCustomer: "1",
+    extrasPerCustomer: "2",
+    revenue: "26000",
+  };
+  return { ...m, cup: { ...defaultCup(m.supplies), margin: "250", vat: "25" }, consumablePricing: { margin: "150", vat: "25" } };
+}
+
+/** Typical amounts per cup, matched to supply items by name. */
+const RECIPE_GUESS: [RegExp, Record<string, string>][] = [
+  [/bean|coffee/i, { kg: "0.018", g: "18" }],
+  [/milk/i, { l: "0.15", ml: "150" }],
+  [/cup/i, { pcs: "1" }],
+  [/lid/i, { pcs: "1" }],
+];
+
+/** A starting recipe built from the month's supplies (beans, milk, cup, lid). */
+export function defaultCup(supplies: SupplyItem[]): CupSettings {
+  const recipe: RecipeItem[] = [];
+  for (const [re, perUnit] of RECIPE_GUESS) {
+    const s = supplies.find((x) => re.test(x.label) && !recipe.some((r) => r.supplyId === x.id));
+    const qty = s && perUnit[s.unit.trim().toLowerCase()];
+    if (s && qty) recipe.push({ id: uid(), supplyId: s.id, qty });
+  }
+  return { recipe, margin: "30", vat: "" };
+}
+
+/** Fill in fields added after a month was saved. */
+export function withDefaults(m: MonthData): MonthData {
+  const p = m as Partial<MonthData> & MonthData;
+  return {
+    ...p,
+    revenue: typeof p.revenue === "string" ? p.revenue : "",
+    consumables: Array.isArray(p.consumables) ? p.consumables : [],
+    consumablePricing: p.consumablePricing ?? { margin: "150", vat: "" },
+    coffeesPerCustomer: typeof p.coffeesPerCustomer === "string" ? p.coffeesPerCustomer : "1",
+    extrasPerCustomer: typeof p.extrasPerCustomer === "string" ? p.extrasPerCustomer : "",
+    cup: p.cup && Array.isArray(p.cup.recipe) ? { ...p.cup, vat: p.cup.vat ?? "" } : defaultCup(p.supplies ?? []),
   };
 }
 
@@ -144,17 +210,20 @@ export function staffLine(x: StaffItem) {
   return { gross, ins, count, total: count * (gross + ins) };
 }
 
+const sumQty = (xs: SupplyItem[] = []) => xs.reduce((a, x) => a + num(x.qty) * num(x.price), 0);
+
 export function computeTotals(m: MonthData): Totals {
   const sumAmt = (xs: LineItem[] = []) => xs.reduce((a, x) => a + num(x.amount), 0);
   const t = {
     premises: sumAmt(m.premises),
     utilities: sumAmt(m.utilities),
     other: sumAmt(m.other),
-    supplies: (m.supplies ?? []).reduce((a, x) => a + num(x.qty) * num(x.price), 0),
+    supplies: sumQty(m.supplies),
+    consumables: sumQty(m.consumables),
     staff: (m.staff ?? []).reduce((a, x) => a + staffLine(x).total, 0),
     total: 0,
   };
-  t.total = t.premises + t.utilities + t.other + t.supplies + t.staff;
+  t.total = t.premises + t.utilities + t.other + t.supplies + t.consumables + t.staff;
   return t;
 }
 
@@ -169,12 +238,73 @@ export function staffSummary(m: MonthData) {
 }
 
 export function breakEven(m: MonthData, total: number) {
-  const days = num(m.days), avg = num(m.avgSale);
+  const days = num(m.days);
+  const cup = cupCost(m);
+  const coffees = num(m.coffeesPerCustomer);
+  const coffeeSpend = coffees * cup.priceInclVat;
+  const extras = num(m.extrasPerCustomer);
+  const extrasVat = Math.max(num(m.consumablePricing?.vat), 0) / 100;
+  /** What one customer pays on average, incl. VAT. */
+  const avgGross = coffeeSpend + extras;
+  /** Costs are excl. VAT, so they're covered by the sale minus its VAT (each at its own rate). */
+  const avg = coffeeSpend / (1 + cup.vat) + extras / (1 + extrasVat);
   return {
     days,
+    coffees,
+    cupPrice: cup.priceInclVat,
+    coffeeSpend,
+    extras,
     avg,
+    avgGross,
+    vat: cup.vat,
+    extrasVat,
     perDay: days > 0 ? total / days : 0,
     customersMonth: avg > 0 ? Math.ceil(total / avg) : 0,
     customersDay: avg > 0 && days > 0 ? Math.ceil(total / avg / days) : 0,
   };
+}
+
+/** Profit or loss once the month's actual sales are entered; null while sales are blank. */
+export function profitOf(m: MonthData, total: number) {
+  if (!String(m.revenue ?? "").trim()) return null;
+  const revenue = num(m.revenue);
+  const profit = revenue - total;
+  const be = breakEven(m, total);
+  const customersDay = be.avg > 0 && be.days > 0 ? revenue / be.avg / be.days : 0;
+  return {
+    revenue,
+    profit,
+    margin: revenue > 0 ? profit / revenue : 0,
+    /** Sales as a share of what's needed to break even (1 = exactly break-even). */
+    coverage: total > 0 ? revenue / total : 0,
+    customersDay,
+    customersNeededDay: be.customersDay,
+  };
+}
+
+/** What one cup's ingredients cost, and the selling price with the margin added on that cost. */
+export function cupCost(m: MonthData) {
+  const lines = (m.cup?.recipe ?? []).map((r) => {
+    const s = m.supplies.find((x) => x.id === r.supplyId);
+    return { ...r, supply: s, cost: s ? num(r.qty) * num(s.price) : 0 };
+  });
+  const ingredients = lines.reduce((a, x) => a + x.cost, 0);
+  const margin = Math.max(num(m.cup?.margin), 0) / 100;
+  const price = ingredients * (1 + margin);
+  const vat = Math.max(num(m.cup?.vat), 0) / 100;
+  return { lines, ingredients, margin, price, profit: price - ingredients, vat, vatAmount: price * vat, priceInclVat: price * (1 + vat) };
+}
+
+/** Selling price of each consumable: its cost plus the margin, then VAT on top. */
+export function consumablePrices(m: MonthData) {
+  const margin = Math.max(num(m.consumablePricing?.margin), 0) / 100;
+  const vat = Math.max(num(m.consumablePricing?.vat), 0) / 100;
+  const items = (m.consumables ?? [])
+    .filter((x) => x.label.trim())
+    .map((x) => {
+      const cost = num(x.price);
+      const price = cost * (1 + margin);
+      return { ...x, cost, profit: price - cost, price, vatAmount: price * vat, priceInclVat: price * (1 + vat) };
+    });
+  return { margin, vat, items };
 }
