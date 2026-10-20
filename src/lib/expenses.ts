@@ -65,6 +65,8 @@ export interface MonthData {
   /** Actual sales this month, excl. VAT. Blank until the month's takings are known. */
   revenue: string;
   cup: CupSettings;
+  /** Selling consumables: margin on cost and VAT, both in %. */
+  consumablePricing: { margin: string; vat: string };
 }
 
 /** Keyed by "YYYY-MM". */
@@ -122,7 +124,7 @@ export function compactFormatter(cur: Currency = DEFAULT_CURRENCY) {
 }
 
 export function sampleMonth(): MonthData {
-  const m: Omit<MonthData, "cup"> = {
+  const m: Omit<MonthData, "cup" | "consumablePricing"> = {
     premises: [
       { id: uid(), label: "Monthly rent", amount: "3000" },
       { id: uid(), label: "Shared building charges", amount: "250" },
@@ -165,7 +167,7 @@ export function sampleMonth(): MonthData {
     extrasPerCustomer: "2",
     revenue: "26000",
   };
-  return { ...m, cup: { ...defaultCup(m.supplies), margin: "250", vat: "25" } };
+  return { ...m, cup: { ...defaultCup(m.supplies), margin: "250", vat: "25" }, consumablePricing: { margin: "150", vat: "25" } };
 }
 
 /** Typical amounts per cup, matched to supply items by name. */
@@ -194,6 +196,7 @@ export function withDefaults(m: MonthData): MonthData {
     ...p,
     revenue: typeof p.revenue === "string" ? p.revenue : "",
     consumables: Array.isArray(p.consumables) ? p.consumables : [],
+    consumablePricing: p.consumablePricing ?? { margin: "150", vat: "" },
     coffeesPerCustomer: typeof p.coffeesPerCustomer === "string" ? p.coffeesPerCustomer : "1",
     extrasPerCustomer: typeof p.extrasPerCustomer === "string" ? p.extrasPerCustomer : "",
     cup: p.cup && Array.isArray(p.cup.recipe) ? { ...p.cup, vat: p.cup.vat ?? "" } : defaultCup(p.supplies ?? []),
@@ -240,10 +243,11 @@ export function breakEven(m: MonthData, total: number) {
   const coffees = num(m.coffeesPerCustomer);
   const coffeeSpend = coffees * cup.priceInclVat;
   const extras = num(m.extrasPerCustomer);
+  const extrasVat = Math.max(num(m.consumablePricing?.vat), 0) / 100;
   /** What one customer pays on average, incl. VAT. */
   const avgGross = coffeeSpend + extras;
-  /** Costs are excl. VAT, so they're covered by the sale minus its VAT. */
-  const avg = avgGross / (1 + cup.vat);
+  /** Costs are excl. VAT, so they're covered by the sale minus its VAT (each at its own rate). */
+  const avg = coffeeSpend / (1 + cup.vat) + extras / (1 + extrasVat);
   return {
     days,
     coffees,
@@ -253,6 +257,7 @@ export function breakEven(m: MonthData, total: number) {
     avg,
     avgGross,
     vat: cup.vat,
+    extrasVat,
     perDay: days > 0 ? total / days : 0,
     customersMonth: avg > 0 ? Math.ceil(total / avg) : 0,
     customersDay: avg > 0 && days > 0 ? Math.ceil(total / avg / days) : 0,
@@ -288,4 +293,18 @@ export function cupCost(m: MonthData) {
   const price = ingredients * (1 + margin);
   const vat = Math.max(num(m.cup?.vat), 0) / 100;
   return { lines, ingredients, margin, price, profit: price - ingredients, vat, vatAmount: price * vat, priceInclVat: price * (1 + vat) };
+}
+
+/** Selling price of each consumable: its cost plus the margin, then VAT on top. */
+export function consumablePrices(m: MonthData) {
+  const margin = Math.max(num(m.consumablePricing?.margin), 0) / 100;
+  const vat = Math.max(num(m.consumablePricing?.vat), 0) / 100;
+  const items = (m.consumables ?? [])
+    .filter((x) => x.label.trim())
+    .map((x) => {
+      const cost = num(x.price);
+      const price = cost * (1 + margin);
+      return { ...x, cost, profit: price - cost, price, vatAmount: price * vat, priceInclVat: price * (1 + vat) };
+    });
+  return { margin, vat, items };
 }

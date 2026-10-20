@@ -122,6 +122,7 @@ export function BreakEvenCard({ month, total, fmt, currency, mutate }: { month: 
             }}
           />
         </Field>
+        <span className="text-[13px] text-muted-foreground">VAT {pctLabel(be.extrasVat)}, set under Consumables pricing.</span>
       </div>
 
       <div className="flex flex-col gap-1.5 text-sm">
@@ -130,7 +131,7 @@ export function BreakEvenCard({ month, total, fmt, currency, mutate }: { month: 
           <strong className="font-mono font-medium">{price(be.avgGross)}</strong>
         </div>
         <div className="flex justify-between">
-          <span>Excl. {pctLabel(be.vat)} VAT</span>
+          <span>Excl. VAT</span>
           <strong className="font-mono font-medium">{price(be.avg)}</strong>
         </div>
         <div className="flex justify-between">

@@ -7,7 +7,7 @@ import { AppHeader } from "@/components/expenses/AppHeader"
 import { CategoryTabs } from "@/components/expenses/CategoryTabs"
 import { LineItemsEditor, StaffEditor, SuppliesEditor } from "@/components/expenses/Editors"
 import { LocationBar } from "@/components/expenses/LocationBar"
-import { CupCostCard, ProfitCard } from "@/components/expenses/ProfitCards"
+import { ConsumablePricingCard, CupCostCard, ProfitCard } from "@/components/expenses/ProfitCards"
 import { BreakEvenCard, BreakdownCard, HistoryCard, TotalCard } from "@/components/expenses/Sidebar"
 import { Button } from "@/components/ui/button"
 import { useExpensesStore } from "@/hooks/useExpensesStore"
@@ -121,6 +121,7 @@ export function ExpensesApp() {
                   </div>
                 </main>
                 <CupCostCard month={m} price={price} mutate={mutate} />
+                <ConsumablePricingCard month={m} price={price} mutate={mutate} />
               </div>
 
               <aside className="flex min-w-0 flex-[1_1_340px] flex-col gap-4">

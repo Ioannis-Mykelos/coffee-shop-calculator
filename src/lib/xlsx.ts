@@ -6,6 +6,7 @@ import {
   type MonthsData,
   breakEven,
   computeTotals,
+  consumablePrices,
   cupCost,
   monthLabel,
   num,
@@ -175,6 +176,16 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
     ["VAT per cup", { v: c.vatAmount, s: S_MONEY }],
     [B("Customer price (incl. VAT)"), { v: c.priceInclVat, s: S_MONEY_BOLD }],
   );
+  const cp = consumablePrices(m);
+  if (cp.items.length) {
+    sum.push(
+      [],
+      [H("Consumables pricing"), H("Cost"), H("Excl. VAT"), H("Customer price")],
+      ["Margin on cost", { v: cp.margin, s: S_PCT }],
+      ["VAT", { v: cp.vat, s: S_PCT }],
+    );
+    for (const x of cp.items) sum.push([x.unit ? `${x.label} (per ${x.unit})` : x.label, { v: x.cost, s: S_MONEY }, { v: x.price, s: S_MONEY }, { v: x.priceInclVat, s: S_MONEY_BOLD }]);
+  }
   sum.push(
     [],
     ["Generated " + new Date().toLocaleString("en-GB")]
@@ -213,7 +224,7 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
   }
 
   const sheets: [string, Row[], number[]][] = [
-    ["Summary", sum, [42, 18, 16]],
+    ["Summary", sum, [42, 18, 16, 16]],
     ["Expenses", ex, [18, 30, 12, 10, 16, 16]],
     ["Staff", st, [24, 12, 12, 16, 14, 24, 20, 24, 18]],
     ["History", hi, [20, 18, 14, 14, 14, 14, 14, 16, 16, 16]],
