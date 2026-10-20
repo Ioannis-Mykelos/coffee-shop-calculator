@@ -28,9 +28,31 @@ const COUNTRY_CURRENCY: Record<string, Currency> = {
   KE: "KES", GH: "GHS",
 };
 
+/** Every country the app knows, for the manual picker. A flag for each is in public/flags. */
+export const COUNTRIES: string[] = Object.keys(COUNTRY_CURRENCY);
+
+/** Every currency the app can pick, for the manual switcher. */
+export const CURRENCIES: Currency[] = [...new Set(Object.values(COUNTRY_CURRENCY))].sort();
+
+export interface GeoLocation {
+  /** ISO 3166 alpha-2, e.g. "DK". */
+  country: string;
+  /** Present only when it came from the visitor's IP. */
+  city: string | null;
+}
+
 export function currencyForCountry(country: string | null | undefined): Currency | null {
   const cur = country ? COUNTRY_CURRENCY[country.toUpperCase()] : undefined;
   return cur && isCurrency(cur) ? cur : null;
+}
+
+/** "DK" → "Denmark". */
+export function countryName(code: string) {
+  try {
+    return new Intl.DisplayNames(["en"], { type: "region" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
 }
 
 /** Country from the browser's language setting, e.g. "da-DK" → "DK". */
@@ -44,19 +66,27 @@ function browserCountry(): string | null {
   return null;
 }
 
-/** Country from the visitor's IP, via Netlify's geolocation (see /api/geo). */
-async function ipCountry(timeoutMs: number): Promise<string | null> {
+/** Location of the visitor's IP, via Netlify's geolocation (see /api/geo). */
+async function ipLocation(timeoutMs: number): Promise<GeoLocation | null> {
   try {
     const res = await fetch("/api/geo", { cache: "no-store", signal: AbortSignal.timeout(timeoutMs) });
     if (!res.ok) return null;
-    const body = (await res.json()) as { country?: string | null };
-    return body.country ?? null;
+    const body = (await res.json()) as { country?: string | null; city?: string | null };
+    return body.country ? { country: body.country, city: body.city ?? null } : null;
   } catch {
     return null;
   }
 }
 
-/** Best-guess currency for a first-time visitor: IP country, then browser locale, then EUR. */
-export async function detectCurrency(timeoutMs = 2500): Promise<Currency> {
-  return currencyForCountry(await ipCountry(timeoutMs)) ?? currencyForCountry(browserCountry()) ?? DEFAULT_CURRENCY;
+/** Visitor's location: IP first, then the browser locale (country only). */
+export async function detectLocation(timeoutMs = 2500): Promise<GeoLocation | null> {
+  const ip = await ipLocation(timeoutMs);
+  if (ip) return ip;
+  const country = browserCountry();
+  return country ? { country, city: null } : null;
+}
+
+/** Currency for a location, or EUR when unknown. */
+export function currencyForLocation(loc: GeoLocation | null): Currency {
+  return currencyForCountry(loc?.country) ?? DEFAULT_CURRENCY;
 }
