@@ -44,6 +44,8 @@ export interface CupSettings {
   recipe: RecipeItem[];
   /** Target profit margin on the selling price, in %. */
   margin: string;
+  /** VAT rate added on top of the final price, in %. */
+  vat: string;
 }
 
 export interface MonthData {
@@ -170,7 +172,7 @@ export function defaultCup(supplies: SupplyItem[]): CupSettings {
     const qty = s && perUnit[s.unit.trim().toLowerCase()];
     if (s && qty) recipe.push({ id: uid(), supplyId: s.id, qty });
   }
-  return { recipe, margin: "30" };
+  return { recipe, margin: "30", vat: "" };
 }
 
 /** Fill in fields added after a month was saved. */
@@ -179,7 +181,7 @@ export function withDefaults(m: MonthData): MonthData {
   return {
     ...p,
     revenue: typeof p.revenue === "string" ? p.revenue : "",
-    cup: p.cup && Array.isArray(p.cup.recipe) ? p.cup : defaultCup(p.supplies ?? []),
+    cup: p.cup && Array.isArray(p.cup.recipe) ? { ...p.cup, vat: p.cup.vat ?? "" } : defaultCup(p.supplies ?? []),
   };
 }
 
@@ -252,5 +254,6 @@ export function cupCost(m: MonthData) {
   const ingredients = lines.reduce((a, x) => a + x.cost, 0);
   const margin = Math.min(Math.max(num(m.cup?.margin), 0), 95) / 100;
   const price = ingredients / (1 - margin);
-  return { lines, ingredients, margin, price, profit: price - ingredients };
+  const vat = Math.max(num(m.cup?.vat), 0) / 100;
+  return { lines, ingredients, margin, price, profit: price - ingredients, vat, vatAmount: price * vat, priceInclVat: price * (1 + vat) };
 }

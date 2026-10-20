@@ -165,6 +165,9 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
     ["Target margin", { v: c.margin, s: S_PCT }],
     ["Margin per cup", { v: c.profit, s: S_MONEY }],
     [B("Final price (excl. VAT)"), { v: c.price, s: S_MONEY_BOLD }],
+    ["VAT", { v: c.vat, s: S_PCT }],
+    ["VAT per cup", { v: c.vatAmount, s: S_MONEY }],
+    [B("Customer price (incl. VAT)"), { v: c.priceInclVat, s: S_MONEY_BOLD }],
   );
   sum.push(
     [],

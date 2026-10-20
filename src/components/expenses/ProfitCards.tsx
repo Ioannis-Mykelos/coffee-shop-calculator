@@ -156,6 +156,29 @@ export function CupCostCard({ month, price, mutate }: { month: MonthData; price:
           <strong className="font-mono font-medium">{price(c.price)}</strong>
         </div>
       </div>
+
+      <div className="flex flex-col gap-3 border-t border-line pt-4 text-sm">
+        <div className="max-w-60">
+          <Field label="VAT (%)">
+            <NumberInput
+              value={month.cup.vat}
+              placeholder="e.g. 25"
+              onChange={(e) => {
+                const v = e.target.value
+                mutate((m) => void (m.cup.vat = v))
+              }}
+            />
+          </Field>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Row label="Final price, excl. VAT" value={price(c.price)} />
+          <Row label={`VAT (${(c.vat * 100).toFixed(1).replace(/\.0$/, "").replace(".", ",")}%)`} value={price(c.vatAmount)} />
+          <div className="mt-1 flex justify-between rounded-[10px] bg-primary px-3 py-2.5 text-primary-foreground">
+            <span className="font-semibold">Price for the customer, incl. VAT</span>
+            <strong className="font-mono font-medium">{price(c.priceInclVat)}</strong>
+          </div>
+        </div>
+      </div>
     </Card>
   )
 }
