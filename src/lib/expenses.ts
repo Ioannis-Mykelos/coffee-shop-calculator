@@ -38,6 +38,15 @@ export const LINE_CATEGORIES: LineCategoryKey[] = ["premises", "utilities", "oth
 export interface LineItem { id: string; label: string; amount: string }
 export interface SupplyItem { id: string; label: string; qty: string; unit: string; price: string }
 export interface StaffItem { id: string; role: string; type: "FT" | "PT"; count: string; hours: string; rate: string; ins: string }
+/** How much of one supply item goes into one cup, in that item's unit. */
+export interface RecipeItem { id: string; supplyId: string; qty: string }
+export interface CupSettings {
+  recipe: RecipeItem[];
+  /** Cups sold this month; rent, staff and the rest are shared across them. */
+  cups: string;
+  /** Target profit margin on the selling price, in %. */
+  margin: string;
+}
 
 export interface MonthData {
   premises: LineItem[];
@@ -47,6 +56,9 @@ export interface MonthData {
   other: LineItem[];
   days: string;
   avgSale: string;
+  /** Actual sales this month, excl. VAT. Blank until the month's takings are known. */
+  revenue: string;
+  cup: CupSettings;
 }
 
 /** Keyed by "YYYY-MM". */
@@ -93,13 +105,18 @@ export function currencyFormatter(cur: Currency = DEFAULT_CURRENCY) {
   const nf = new Intl.NumberFormat(LOCALES[cur], { style: "currency", currency: cur, maximumFractionDigits: 0 });
   return (n: number) => nf.format(Math.round(n));
 }
+/** Like currencyFormatter but with cents, for per-cup prices. */
+export function priceFormatter(cur: Currency = DEFAULT_CURRENCY) {
+  const nf = new Intl.NumberFormat(LOCALES[cur], { style: "currency", currency: cur, minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (n: number) => nf.format(n);
+}
 export function compactFormatter(cur: Currency = DEFAULT_CURRENCY) {
   const cf = new Intl.NumberFormat("en-GB", { style: "currency", currency: cur, notation: "compact", maximumFractionDigits: 1 });
   return (n: number) => cf.format(n);
 }
 
 export function sampleMonth(): MonthData {
-  return {
+  const m: Omit<MonthData, "cup"> = {
     premises: [
       { id: uid(), label: "Monthly rent", amount: "3000" },
       { id: uid(), label: "Shared building charges", amount: "250" },
@@ -134,6 +151,37 @@ export function sampleMonth(): MonthData {
     ],
     days: "30",
     avgSale: "6",
+    revenue: "26000",
+  };
+  return { ...m, cup: defaultCup(m.supplies, "4500") };
+}
+
+/** Typical amounts per cup, matched to supply items by name. */
+const RECIPE_GUESS: [RegExp, Record<string, string>][] = [
+  [/bean|coffee/i, { kg: "0.018", g: "18" }],
+  [/milk/i, { l: "0.15", ml: "150" }],
+  [/cup/i, { pcs: "1" }],
+  [/lid/i, { pcs: "1" }],
+];
+
+/** A starting recipe built from the month's supplies (beans, milk, cup, lid). */
+export function defaultCup(supplies: SupplyItem[], cups = ""): CupSettings {
+  const recipe: RecipeItem[] = [];
+  for (const [re, perUnit] of RECIPE_GUESS) {
+    const s = supplies.find((x) => re.test(x.label) && !recipe.some((r) => r.supplyId === x.id));
+    const qty = s && perUnit[s.unit.trim().toLowerCase()];
+    if (s && qty) recipe.push({ id: uid(), supplyId: s.id, qty });
+  }
+  return { recipe, cups, margin: "30" };
+}
+
+/** Fill in fields added after a month was saved. */
+export function withDefaults(m: MonthData): MonthData {
+  const p = m as Partial<MonthData> & MonthData;
+  return {
+    ...p,
+    revenue: typeof p.revenue === "string" ? p.revenue : "",
+    cup: p.cup && Array.isArray(p.cup.recipe) ? p.cup : defaultCup(p.supplies ?? []),
   };
 }
 
@@ -176,5 +224,48 @@ export function breakEven(m: MonthData, total: number) {
     perDay: days > 0 ? total / days : 0,
     customersMonth: avg > 0 ? Math.ceil(total / avg) : 0,
     customersDay: avg > 0 && days > 0 ? Math.ceil(total / avg / days) : 0,
+  };
+}
+
+/** Profit or loss once the month's actual sales are entered; null while sales are blank. */
+export function profitOf(m: MonthData, total: number) {
+  if (!String(m.revenue ?? "").trim()) return null;
+  const revenue = num(m.revenue);
+  const profit = revenue - total;
+  const be = breakEven(m, total);
+  const customersDay = be.avg > 0 && be.days > 0 ? revenue / be.avg / be.days : 0;
+  return {
+    revenue,
+    profit,
+    margin: revenue > 0 ? profit / revenue : 0,
+    /** Sales as a share of what's needed to break even (1 = exactly break-even). */
+    coverage: total > 0 ? revenue / total : 0,
+    customersDay,
+    customersNeededDay: be.customersDay,
+  };
+}
+
+/** What one cup costs: its ingredients plus an equal share of every other cost. */
+export function cupCost(m: MonthData, total: number) {
+  const lines = (m.cup?.recipe ?? []).map((r) => {
+    const s = m.supplies.find((x) => x.id === r.supplyId);
+    return { ...r, supply: s, cost: s ? num(r.qty) * num(s.price) : 0 };
+  });
+  const ingredients = lines.reduce((a, x) => a + x.cost, 0);
+  const cups = num(m.cup?.cups);
+  const overhead = cups > 0 ? Math.max(0, total - ingredients * cups) / cups : 0;
+  const full = ingredients + overhead;
+  const margin = Math.min(Math.max(num(m.cup?.margin), 0), 95) / 100;
+  const revenue = num(m.revenue);
+  return {
+    lines,
+    ingredients,
+    cups,
+    overhead,
+    full,
+    margin,
+    price: full / (1 - margin),
+    /** Average takings per cup sold, when sales are entered. */
+    earnedPerCup: cups > 0 && revenue > 0 ? revenue / cups : 0,
   };
 }

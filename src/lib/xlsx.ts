@@ -6,8 +6,10 @@ import {
   type MonthsData,
   breakEven,
   computeTotals,
+  cupCost,
   monthLabel,
   num,
+  profitOf,
   shiftMonth,
   staffLine,
   staffSummary,
@@ -143,6 +145,33 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
     ["Customers needed this month", be.customersMonth],
     ["Customers needed per day", be.customersDay],
     [],
+  );
+  const p = profitOf(m, t.total);
+  if (p) {
+    sum.push(
+      [H("Sales & profit"), H("")],
+      ["Actual sales (excl. VAT)", M(p.revenue)],
+      ["Expenses", M(t.total)],
+      [B(p.profit < 0 ? "Loss" : "Profit"), { v: p.profit, s: S_MONEY_BOLD }],
+      ["Profit margin", { v: p.margin, s: S_PCT }],
+      [],
+    );
+  }
+  const c = cupCost(m, t.total);
+  sum.push([H("Cost per cup"), H("")]);
+  for (const l of c.lines) if (l.supply) sum.push([`${l.supply.label} (${num(l.qty)} ${l.supply.unit})`, { v: l.cost, s: S_MONEY }]);
+  sum.push(["Ingredients", { v: c.ingredients, s: S_MONEY }]);
+  if (c.cups > 0) {
+    sum.push(
+      ["Cups sold", c.cups],
+      ["Share of other costs", { v: c.overhead, s: S_MONEY }],
+      [B("Full cost of one cup"), { v: c.full, s: S_MONEY_BOLD }],
+      ["Target margin", { v: c.margin, s: S_PCT }],
+      [B("Suggested price (excl. VAT)"), { v: c.price, s: S_MONEY_BOLD }],
+    );
+  }
+  sum.push(
+    [],
     ["Generated " + new Date().toLocaleString("en-GB")]
   );
 
@@ -164,17 +193,24 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
   }
   st.push([], [B("Total staff cost"), "", ft + pt, "", "", "", "", "", { v: t.staff, s: S_MONEY_BOLD }]);
 
-  const hi: Row[] = [[H("Month"), ...CATEGORIES.map((c) => H(c.label)), H("Total")]];
+  const hi: Row[] = [[H("Month"), ...CATEGORIES.map((c) => H(c.label)), H("Total"), H("Sales"), H("Profit")]];
   for (const key of Object.keys(data).sort()) {
     const tt = computeTotals(data[key]);
-    hi.push([key === month ? B(monthLabel(key)) : monthLabel(key), ...CATEGORIES.map((c) => M(tt[c.key])), { v: tt.total, s: S_MONEY_BOLD }]);
+    const pp = profitOf(data[key], tt.total);
+    hi.push([
+      key === month ? B(monthLabel(key)) : monthLabel(key),
+      ...CATEGORIES.map((c) => M(tt[c.key])),
+      { v: tt.total, s: S_MONEY_BOLD },
+      pp ? M(pp.revenue) : "",
+      pp ? M(pp.profit) : "",
+    ]);
   }
 
   const sheets: [string, Row[], number[]][] = [
     ["Summary", sum, [42, 18, 16]],
     ["Expenses", ex, [18, 30, 12, 10, 16, 16]],
     ["Staff", st, [24, 12, 12, 16, 14, 24, 20, 24, 18]],
-    ["History", hi, [20, 18, 14, 14, 14, 14, 16]],
+    ["History", hi, [20, 18, 14, 14, 14, 14, 16, 16, 16]],
   ];
   const NS = "http://schemas.openxmlformats.org/";
   const head = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';

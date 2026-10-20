@@ -11,6 +11,7 @@ import {
   monthKey,
   sampleMonth,
   shiftMonth,
+  withDefaults,
 } from "@/lib/expenses"
 import { type GeoLocation, currencyForCountry, currencyForLocation, detectLocation } from "@/lib/geo"
 
@@ -30,6 +31,7 @@ function load(): Omit<StoreState, "currency"> & { currency: Currency | null } {
     if (raw) {
       const p = JSON.parse(raw) as Partial<StoreState>
       if (p?.data) {
+        p.data = Object.fromEntries(Object.entries(p.data).map(([k, m]) => [k, withDefaults(m)]))
         const currency = isCurrency(p.currency) ? p.currency : null
         const country = typeof p.country === "string" && /^[A-Z]{2}$/.test(p.country) ? p.country : undefined
         if (p.data[month]) return { data: p.data, month, currency, country }
@@ -82,12 +84,12 @@ export function useExpensesStore() {
     })
   }, [])
 
-  /** Move to another month; a new month starts as a copy of the one you came from. */
+  /** Move to another month; a new month starts as a copy of the one you came from, minus its sales. */
   const go = useCallback((delta: number) => {
     setState((s) => {
       if (!s) return s
       const k = shiftMonth(s.month, delta)
-      const data = s.data[k] ? s.data : { ...s.data, [k]: structuredClone(s.data[s.month]) }
+      const data = s.data[k] ? s.data : { ...s.data, [k]: { ...structuredClone(s.data[s.month]), revenue: "" } }
       return { ...s, month: k, data }
     })
   }, [])
