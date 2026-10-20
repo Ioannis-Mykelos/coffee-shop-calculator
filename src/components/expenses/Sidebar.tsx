@@ -69,6 +69,8 @@ export function BreakdownCard({ totals, fmt }: { totals: Totals; fmt: Fmt }) {
   )
 }
 
+const pctLabel = (v: number) => (v * 100).toFixed(1).replace(/\.0$/, "").replace(".", ",") + "%"
+
 export function BreakEvenCard({ month, total, fmt, currency, mutate }: { month: MonthData; total: number; fmt: Fmt; currency: Currency; mutate: (fn: (m: MonthData) => void) => void }) {
   const be = breakEven(month, total)
   const price = priceFormatter(currency)
@@ -89,22 +91,48 @@ export function BreakEvenCard({ month, total, fmt, currency, mutate }: { month: 
             }}
           />
         </Field>
-        <Field label={`Avg. sale per customer, incl. VAT (${symbol})`}>
+        <Field label="Avg. coffees per customer">
           <NumberInput
-            value={month.avgSale}
+            value={month.coffeesPerCustomer}
             onChange={(e) => {
               const v = e.target.value
-              mutate((m) => void (m.avgSale = v))
+              mutate((m) => void (m.coffeesPerCustomer = v))
             }}
           />
         </Field>
       </div>
-      <p className="m-0 text-[13px] text-muted-foreground">
-        {be.vat > 0
-          ? `${price(be.avg)} per customer after ${(be.vat * 100).toFixed(1).replace(/\.0$/, "").replace(".", ",")}% VAT (the rate set under Cost per cup).`
-          : "Set the VAT % under Cost per cup to take VAT off the average sale."}
-      </p>
+      <div className="flex justify-between gap-3 text-sm">
+        <span>
+          Coffee spend per customer
+          <span className="block text-[13px] text-muted-foreground">
+            {be.coffees.toLocaleString("en-GB")} × {price(be.cupPrice)} (price for the customer, incl. VAT)
+          </span>
+        </span>
+        <strong className="font-mono font-medium">{price(be.coffeeSpend)}</strong>
+      </div>
+
+      <div className="flex flex-col gap-2 rounded-xl border border-line bg-subtle p-3">
+        <div className="text-sm font-semibold">Other consumables</div>
+        <Field label={`Juice, pastries etc. per customer, incl. VAT (${symbol})`}>
+          <NumberInput
+            value={month.extrasPerCustomer}
+            onChange={(e) => {
+              const v = e.target.value
+              mutate((m) => void (m.extrasPerCustomer = v))
+            }}
+          />
+        </Field>
+      </div>
+
       <div className="flex flex-col gap-1.5 text-sm">
+        <div className="flex justify-between">
+          <span>Avg. sale per customer, incl. VAT</span>
+          <strong className="font-mono font-medium">{price(be.avgGross)}</strong>
+        </div>
+        <div className="flex justify-between">
+          <span>Excl. {pctLabel(be.vat)} VAT</span>
+          <strong className="font-mono font-medium">{price(be.avg)}</strong>
+        </div>
         <div className="flex justify-between">
           <span>Cost per opening day</span>
           <strong className="font-mono font-medium">{fmt(be.perDay)}</strong>

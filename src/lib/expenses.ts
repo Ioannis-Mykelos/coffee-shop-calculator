@@ -55,8 +55,10 @@ export interface MonthData {
   staff: StaffItem[];
   other: LineItem[];
   days: string;
-  /** Average sale per customer incl. VAT; the VAT rate is cup.vat. */
-  avgSale: string;
+  /** Average coffees per customer; each is sold at the cup price incl. VAT. */
+  coffeesPerCustomer: string;
+  /** Average spend per customer on other consumables (juice, pastries…), incl. VAT. */
+  extrasPerCustomer: string;
   /** Actual sales this month, excl. VAT. Blank until the month's takings are known. */
   revenue: string;
   cup: CupSettings;
@@ -151,10 +153,11 @@ export function sampleMonth(): MonthData {
       { id: uid(), label: "Accountant", amount: "200" },
     ],
     days: "30",
-    avgSale: "7.5",
+    coffeesPerCustomer: "1",
+    extrasPerCustomer: "2",
     revenue: "26000",
   };
-  return { ...m, cup: { ...defaultCup(m.supplies), vat: "25" } };
+  return { ...m, cup: { ...defaultCup(m.supplies), margin: "250", vat: "25" } };
 }
 
 /** Typical amounts per cup, matched to supply items by name. */
@@ -182,6 +185,8 @@ export function withDefaults(m: MonthData): MonthData {
   return {
     ...p,
     revenue: typeof p.revenue === "string" ? p.revenue : "",
+    coffeesPerCustomer: typeof p.coffeesPerCustomer === "string" ? p.coffeesPerCustomer : "1",
+    extrasPerCustomer: typeof p.extrasPerCustomer === "string" ? p.extrasPerCustomer : "",
     cup: p.cup && Array.isArray(p.cup.recipe) ? { ...p.cup, vat: p.cup.vat ?? "" } : defaultCup(p.supplies ?? []),
   };
 }
@@ -218,15 +223,24 @@ export function staffSummary(m: MonthData) {
 }
 
 export function breakEven(m: MonthData, total: number) {
-  const days = num(m.days), avgGross = num(m.avgSale);
-  const vat = Math.max(num(m.cup?.vat), 0) / 100;
+  const days = num(m.days);
+  const cup = cupCost(m);
+  const coffees = num(m.coffeesPerCustomer);
+  const coffeeSpend = coffees * cup.priceInclVat;
+  const extras = num(m.extrasPerCustomer);
+  /** What one customer pays on average, incl. VAT. */
+  const avgGross = coffeeSpend + extras;
   /** Costs are excl. VAT, so they're covered by the sale minus its VAT. */
-  const avg = avgGross / (1 + vat);
+  const avg = avgGross / (1 + cup.vat);
   return {
     days,
+    coffees,
+    cupPrice: cup.priceInclVat,
+    coffeeSpend,
+    extras,
     avg,
     avgGross,
-    vat,
+    vat: cup.vat,
     perDay: days > 0 ? total / days : 0,
     customersMonth: avg > 0 ? Math.ceil(total / avg) : 0,
     customersDay: avg > 0 && days > 0 ? Math.ceil(total / avg / days) : 0,
