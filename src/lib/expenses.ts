@@ -55,6 +55,7 @@ export interface MonthData {
   staff: StaffItem[];
   other: LineItem[];
   days: string;
+  /** Average sale per customer incl. VAT; the VAT rate is cup.vat. */
   avgSale: string;
   /** Actual sales this month, excl. VAT. Blank until the month's takings are known. */
   revenue: string;
@@ -150,10 +151,10 @@ export function sampleMonth(): MonthData {
       { id: uid(), label: "Accountant", amount: "200" },
     ],
     days: "30",
-    avgSale: "6",
+    avgSale: "7.5",
     revenue: "26000",
   };
-  return { ...m, cup: defaultCup(m.supplies) };
+  return { ...m, cup: { ...defaultCup(m.supplies), vat: "25" } };
 }
 
 /** Typical amounts per cup, matched to supply items by name. */
@@ -217,10 +218,15 @@ export function staffSummary(m: MonthData) {
 }
 
 export function breakEven(m: MonthData, total: number) {
-  const days = num(m.days), avg = num(m.avgSale);
+  const days = num(m.days), avgGross = num(m.avgSale);
+  const vat = Math.max(num(m.cup?.vat), 0) / 100;
+  /** Costs are excl. VAT, so they're covered by the sale minus its VAT. */
+  const avg = avgGross / (1 + vat);
   return {
     days,
     avg,
+    avgGross,
+    vat,
     perDay: days > 0 ? total / days : 0,
     customersMonth: avg > 0 ? Math.ceil(total / avg) : 0,
     customersDay: avg > 0 && days > 0 ? Math.ceil(total / avg / days) : 0,

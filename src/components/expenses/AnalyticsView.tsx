@@ -13,6 +13,7 @@ import {
   monthLabel,
   monthShort,
   num,
+  breakEven,
   profitOf,
 } from "@/lib/expenses"
 import { cn } from "@/lib/utils"
@@ -110,7 +111,7 @@ export function AnalyticsView({ data, month, fmt, currency }: { data: MonthsData
       g.salesCost += tt.total
       g.salesMonths++
     }
-    const a = num(md.avgSale), dd = num(md.days)
+    const a = breakEven(md, tt.total).avg, dd = num(md.days)
     if (a > 0 && dd > 0) {
       g.cust += tt.total / a
       g.days += dd

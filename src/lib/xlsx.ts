@@ -140,6 +140,8 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
   sum.push(
     [H("Break-even"), H("")],
     ["Opening days", be.days],
+    ["Average sale per customer (incl. VAT)", M(be.avgGross)],
+    ["VAT", { v: be.vat, s: S_PCT }],
     ["Average sale per customer (excl. VAT)", M(be.avg)],
     ["Cost per opening day", M(be.perDay)],
     ["Customers needed this month", be.customersMonth],

@@ -121,9 +121,9 @@ export function ExpensesApp() {
 
               <aside className="flex min-w-0 flex-[1_1_340px] flex-col gap-4">
                 <TotalCard data={data} month={month} totals={totals} fmt={fmt} monthLabel={label} />
+                <BreakEvenCard month={m} total={totals.total} fmt={fmt} currency={state.currency} mutate={mutate} />
                 <ProfitCard month={m} total={totals.total} fmt={fmt} mutate={mutate} />
                 <BreakdownCard totals={totals} fmt={fmt} />
-                <BreakEvenCard month={m} total={totals.total} fmt={fmt} mutate={mutate} />
                 <HistoryCard data={data} month={month} fmt={fmt} currency={state.currency} />
               </aside>
             </div>

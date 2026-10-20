@@ -11,6 +11,7 @@ import {
   computeTotals,
   monthName,
   monthShort,
+  priceFormatter,
   shiftMonth,
 } from "@/lib/expenses"
 
@@ -68,23 +69,27 @@ export function BreakdownCard({ totals, fmt }: { totals: Totals; fmt: Fmt }) {
   )
 }
 
-export function BreakEvenCard({ month, total, fmt, mutate }: { month: MonthData; total: number; fmt: Fmt; mutate: (fn: (m: MonthData) => void) => void }) {
+export function BreakEvenCard({ month, total, fmt, currency, mutate }: { month: MonthData; total: number; fmt: Fmt; currency: Currency; mutate: (fn: (m: MonthData) => void) => void }) {
   const be = breakEven(month, total)
+  const price = priceFormatter(currency)
+  const symbol = price(0).replace(/[\d\s.,\u00a0]/g, "") || currency
   return (
     <Card>
       <CardTitle>Break-even check</CardTitle>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Opening days this month">
+      <div className="grid grid-cols-[96px_minmax(0,1fr)] items-end gap-3">
+        <Field label="Opening days">
           <NumberInput
             inputMode="numeric"
+            maxLength={2}
             value={month.days}
             onChange={(e) => {
-              const v = e.target.value
+              const d = e.target.value.replace(/\D/g, "")
+              const v = d && Math.min(+d, 31).toString()
               mutate((m) => void (m.days = v))
             }}
           />
         </Field>
-        <Field label="Avg. sale per customer, excl. VAT">
+        <Field label={`Avg. sale per customer, incl. VAT (${symbol})`}>
           <NumberInput
             value={month.avgSale}
             onChange={(e) => {
@@ -94,6 +99,11 @@ export function BreakEvenCard({ month, total, fmt, mutate }: { month: MonthData;
           />
         </Field>
       </div>
+      <p className="m-0 text-[13px] text-muted-foreground">
+        {be.vat > 0
+          ? `${price(be.avg)} per customer after ${(be.vat * 100).toFixed(1).replace(/\.0$/, "").replace(".", ",")}% VAT (the rate set under Cost per cup).`
+          : "Set the VAT % under Cost per cup to take VAT off the average sale."}
+      </p>
       <div className="flex flex-col gap-1.5 text-sm">
         <div className="flex justify-between">
           <span>Cost per opening day</span>
