@@ -28,6 +28,9 @@ const COUNTRY_CURRENCY: Record<string, Currency> = {
   KE: "KES", GH: "GHS",
 };
 
+/** Every country the app knows, for the manual picker. A flag for each is in public/flags. */
+export const COUNTRIES: string[] = Object.keys(COUNTRY_CURRENCY);
+
 /** Every currency the app can pick, for the manual switcher. */
 export const CURRENCIES: Currency[] = [...new Set(Object.values(COUNTRY_CURRENCY))].sort();
 

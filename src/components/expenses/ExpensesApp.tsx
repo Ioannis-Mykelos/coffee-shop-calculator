@@ -22,7 +22,7 @@ import {
 import { buildXlsx, downloadBlob } from "@/lib/xlsx"
 
 export function ExpensesApp() {
-  const { state, location, mutate, go, setCurrency } = useExpensesStore()
+  const { state, location, mutate, go, setCurrency, setCountry } = useExpensesStore()
   const [tab, setTab] = useState<CategoryKey>("premises")
   const [view, setView] = useState<"calc" | "analytics">("calc")
   const [exportMsg, setExportMsg] = useState("")
@@ -62,7 +62,13 @@ export function ExpensesApp() {
   return (
     <div className="min-h-screen">
       <div className="mx-auto flex max-w-[1280px] flex-col gap-6 px-6 pt-8 pb-16">
-        <LocationBar location={location} currency={state.currency} onCurrency={setCurrency} />
+        <LocationBar
+          location={location}
+          override={state.country}
+          currency={state.currency}
+          onCountry={setCountry}
+          onCurrency={setCurrency}
+        />
         <AppHeader
           monthLabel={label}
           isAnalytics={isAnalytics}

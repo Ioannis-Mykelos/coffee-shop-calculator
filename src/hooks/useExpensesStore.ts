@@ -12,12 +12,14 @@ import {
   sampleMonth,
   shiftMonth,
 } from "@/lib/expenses"
-import { type GeoLocation, currencyForLocation, detectLocation } from "@/lib/geo"
+import { type GeoLocation, currencyForCountry, currencyForLocation, detectLocation } from "@/lib/geo"
 
 interface StoreState {
   month: string
   data: MonthsData
   currency: Currency
+  /** Country the user picked by hand (e.g. when on a VPN); overrides the detected one. */
+  country?: string
 }
 
 /** Saved state; currency is null on a first visit or for data saved before it was stored. */
@@ -29,8 +31,9 @@ function load(): Omit<StoreState, "currency"> & { currency: Currency | null } {
       const p = JSON.parse(raw) as Partial<StoreState>
       if (p?.data) {
         const currency = isCurrency(p.currency) ? p.currency : null
-        if (p.data[month]) return { data: p.data, month, currency }
-        if (p.month && p.data[p.month]) return { data: p.data, month: p.month, currency }
+        const country = typeof p.country === "string" && /^[A-Z]{2}$/.test(p.country) ? p.country : undefined
+        if (p.data[month]) return { data: p.data, month, currency, country }
+        if (p.month && p.data[p.month]) return { data: p.data, month: p.month, currency, country }
       }
     }
   } catch {}
@@ -45,7 +48,7 @@ function load(): Omit<StoreState, "currency"> & { currency: Currency | null } {
  */
 export function useExpensesStore() {
   const [state, setState] = useState<StoreState | null>(null)
-  const [location, setLocation] = useState<GeoLocation | null>(null)
+  const [detected, setDetected] = useState<GeoLocation | null>(null)
 
   useEffect(() => {
     const saved = load()
@@ -54,7 +57,7 @@ export function useExpensesStore() {
     let cancelled = false
     detectLocation().then((loc) => {
       if (cancelled) return
-      setLocation(loc)
+      setDetected(loc)
       if (!currency) setState({ ...saved, currency: currencyForLocation(loc) })
     })
     return () => {
@@ -94,5 +97,22 @@ export function useExpensesStore() {
     setState((s) => (s ? { ...s, currency } : s))
   }, [])
 
-  return { state, location, mutate, go, setCurrency }
+  /** Pick a country by hand (null = back to the detected one); the currency follows it. */
+  const setCountry = useCallback(
+    (country: string | null) => {
+      setState((s) => {
+        if (!s) return s
+        const currency = country ? currencyForCountry(country) ?? s.currency : currencyForLocation(detected)
+        return { ...s, country: country ?? undefined, currency }
+      })
+    },
+    [detected],
+  )
+
+  const country = state?.country
+  const location: GeoLocation | null = country
+    ? { country, city: country === detected?.country ? detected.city : null }
+    : detected
+
+  return { state, location, mutate, go, setCurrency, setCountry }
 }
