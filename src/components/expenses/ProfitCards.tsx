@@ -71,7 +71,7 @@ export function ProfitCard({ month, total, fmt, mutate }: { month: MonthData; to
   )
 }
 
-/** Cost of one cup's ingredients from Supplies, and the price that gives the target margin. */
+/** Cost of one cup's ingredients from Supplies, and the price with the margin added on that cost. */
 export function CupCostCard({ month, price, mutate }: { month: MonthData; price: Fmt; mutate: Mutate }) {
   const c = cupCost(month)
   const usable = month.supplies.filter((s) => s.label.trim())
@@ -137,7 +137,7 @@ export function CupCostCard({ month, price, mutate }: { month: MonthData; price:
       </div>
 
       <div className="max-w-60">
-        <Field label="Target profit margin (%)">
+        <Field label="Margin on cost (%)">
           <NumberInput
             value={month.cup.margin}
             onChange={(e) => {
@@ -150,7 +150,7 @@ export function CupCostCard({ month, price, mutate }: { month: MonthData; price:
 
       <div className="flex flex-col gap-1.5 border-t border-line pt-4 text-sm">
         <Row label="Ingredients cost per cup" value={price(c.ingredients)} />
-        <Row label={`Your margin (${Math.round(c.margin * 100)}% of the price)`} value={price(c.profit)} />
+        <Row label={`Your margin (${pct(c.margin).replace(/,0%$/, "%")} of the cost)`} value={price(c.profit)} />
         <div className="mt-1 flex justify-between rounded-[10px] bg-brand-soft px-3 py-2.5 text-brand-strong">
           <span className="font-semibold">Final price, excl. VAT</span>
           <strong className="font-mono font-medium">{price(c.price)}</strong>

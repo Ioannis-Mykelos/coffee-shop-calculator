@@ -162,7 +162,7 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
   for (const l of c.lines) if (l.supply) sum.push([`${l.supply.label} (${num(l.qty)} ${l.supply.unit})`, { v: l.cost, s: S_MONEY }]);
   sum.push(
     [B("Ingredients cost per cup"), { v: c.ingredients, s: S_MONEY_BOLD }],
-    ["Target margin", { v: c.margin, s: S_PCT }],
+    ["Margin on cost", { v: c.margin, s: S_PCT }],
     ["Margin per cup", { v: c.profit, s: S_MONEY }],
     [B("Final price (excl. VAT)"), { v: c.price, s: S_MONEY_BOLD }],
     ["VAT", { v: c.vat, s: S_PCT }],

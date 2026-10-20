@@ -42,7 +42,7 @@ export interface StaffItem { id: string; role: string; type: "FT" | "PT"; count:
 export interface RecipeItem { id: string; supplyId: string; qty: string }
 export interface CupSettings {
   recipe: RecipeItem[];
-  /** Target profit margin on the selling price, in %. */
+  /** Margin added on top of the ingredients cost, in % (120 means price = cost × 2.2). */
   margin: string;
   /** VAT rate added on top of the final price, in %. */
   vat: string;
@@ -245,15 +245,15 @@ export function profitOf(m: MonthData, total: number) {
   };
 }
 
-/** What one cup's ingredients cost, and the selling price that gives the target margin on them. */
+/** What one cup's ingredients cost, and the selling price with the margin added on that cost. */
 export function cupCost(m: MonthData) {
   const lines = (m.cup?.recipe ?? []).map((r) => {
     const s = m.supplies.find((x) => x.id === r.supplyId);
     return { ...r, supply: s, cost: s ? num(r.qty) * num(s.price) : 0 };
   });
   const ingredients = lines.reduce((a, x) => a + x.cost, 0);
-  const margin = Math.min(Math.max(num(m.cup?.margin), 0), 95) / 100;
-  const price = ingredients / (1 - margin);
+  const margin = Math.max(num(m.cup?.margin), 0) / 100;
+  const price = ingredients * (1 + margin);
   const vat = Math.max(num(m.cup?.vat), 0) / 100;
   return { lines, ingredients, margin, price, profit: price - ingredients, vat, vatAmount: price * vat, priceInclVat: price * (1 + vat) };
 }
