@@ -6,6 +6,7 @@ import { Card, CardTitle, Eyebrow, Swatch } from "@/components/ui/card"
 import {
   CATEGORIES,
   type CategoryKey,
+  type Currency,
   type MonthsData,
   compactFormatter,
   computeTotals,
@@ -68,10 +69,10 @@ const tabClass =
 
 const tableGrid = "grid grid-cols-[minmax(0,1.6fr)_repeat(4,minmax(0,1fr))] gap-3"
 
-export function AnalyticsView({ data, month, fmt }: { data: MonthsData; month: string; fmt: (n: number) => string }) {
+export function AnalyticsView({ data, month, fmt, currency }: { data: MonthsData; month: string; fmt: (n: number) => string; currency: Currency }) {
   const [period, setPeriod] = useState<Period>("month")
   const [picked, setPicked] = useState<string | null>(null)
-  const cf = compactFormatter()
+  const cf = compactFormatter(currency)
 
   const groups: Record<string, Bucket> = {}
   const order: string[] = []

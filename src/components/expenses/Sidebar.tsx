@@ -2,6 +2,7 @@ import { Card, CardTitle, Swatch } from "@/components/ui/card"
 import { Field, NumberInput } from "@/components/ui/input"
 import {
   CATEGORIES,
+  type Currency,
   type MonthData,
   type MonthsData,
   type Totals,
@@ -112,13 +113,13 @@ export function BreakEvenCard({ month, total, fmt, mutate }: { month: MonthData;
 }
 
 /** Line chart of up to six months ending at the selected month. */
-export function HistoryCard({ data, month, fmt }: { data: MonthsData; month: string; fmt: Fmt }) {
+export function HistoryCard({ data, month, fmt, currency }: { data: MonthsData; month: string; fmt: Fmt; currency: Currency }) {
   const keys = Object.keys(data).filter((k) => k <= month).sort().slice(-6)
   const vals = keys.map((k) => computeTotals(data[k]).total)
   const hiV = Math.max(...vals), loV = Math.min(...vals)
   const span = hiV - loV || Math.max(hiV * 0.1, 1)
   const topV = hiV + span * 0.35, botV = Math.max(0, loV - span * 0.35)
-  const cf = compactFormatter()
+  const cf = compactFormatter(currency)
   const n = keys.length
   const points = keys.map((k, i) => {
     const on = k === month
