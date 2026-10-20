@@ -3,7 +3,7 @@ import { Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardTitle } from "@/components/ui/card"
 import { Field, NumberInput } from "@/components/ui/input"
-import { type MonthData, cupCost, num, profitOf, uid } from "@/lib/expenses"
+import { type MonthData, cupCost, profitOf, uid } from "@/lib/expenses"
 import { cn } from "@/lib/utils"
 
 type Mutate = (fn: (m: MonthData) => void) => void
@@ -71,9 +71,9 @@ export function ProfitCard({ month, total, fmt, mutate }: { month: MonthData; to
   )
 }
 
-/** Cost of one cup: recipe ingredients from Supplies plus a share of all other costs, and a suggested price. */
-export function CupCostCard({ month, total, fmt, price, mutate }: { month: MonthData; total: number; fmt: Fmt; price: Fmt; mutate: Mutate }) {
-  const c = cupCost(month, total)
+/** Cost of one cup's ingredients from Supplies, and the price that gives the target margin. */
+export function CupCostCard({ month, price, mutate }: { month: MonthData; price: Fmt; mutate: Mutate }) {
+  const c = cupCost(month)
   const usable = month.supplies.filter((s) => s.label.trim())
   const setRecipe = (id: string, field: "supplyId" | "qty", v: string) =>
     mutate((m) => {
@@ -86,7 +86,7 @@ export function CupCostCard({ month, total, fmt, price, mutate }: { month: Month
       <div>
         <h2 className="m-0 font-display text-[22px] font-bold">Cost per cup</h2>
         <p className="mt-1 mb-0 text-sm text-muted-foreground">
-          What goes into one coffee, priced from your Supplies, plus its share of rent, staff and everything else.
+          What goes into one coffee (beans, milk, cup, lid and anything else), priced from your Supplies.
         </p>
       </div>
 
@@ -136,17 +136,7 @@ export function CupCostCard({ month, total, fmt, price, mutate }: { month: Month
         </Button>
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-        <Field label="Cups sold this month">
-          <NumberInput
-            inputMode="numeric"
-            value={month.cup.cups}
-            onChange={(e) => {
-              const v = e.target.value
-              mutate((m) => void (m.cup.cups = v))
-            }}
-          />
-        </Field>
+      <div className="max-w-60">
         <Field label="Target profit margin (%)">
           <NumberInput
             value={month.cup.margin}
@@ -159,23 +149,12 @@ export function CupCostCard({ month, total, fmt, price, mutate }: { month: Month
       </div>
 
       <div className="flex flex-col gap-1.5 border-t border-line pt-4 text-sm">
-        <Row label="Ingredients" value={price(c.ingredients)} />
-        <Row
-          label="Share of rent, staff and other costs"
-          value={c.cups > 0 ? price(c.overhead) : "—"}
-        />
-        <Row label="Full cost of one cup" value={c.cups > 0 ? price(c.full) : "—"} className="font-semibold" />
+        <Row label="Ingredients cost per cup" value={price(c.ingredients)} />
+        <Row label={`Your margin (${Math.round(c.margin * 100)}% of the price)`} value={price(c.profit)} />
         <div className="mt-1 flex justify-between rounded-[10px] bg-brand-soft px-3 py-2.5 text-brand-strong">
-          <span className="font-semibold">Suggested price, excl. VAT ({Math.round(c.margin * 100)}% margin)</span>
-          <strong className="font-mono font-medium">{c.cups > 0 ? price(c.price) : "—"}</strong>
+          <span className="font-semibold">Final price, excl. VAT</span>
+          <strong className="font-mono font-medium">{price(c.price)}</strong>
         </div>
-        <p className="m-0 mt-1 text-[13px] text-muted-foreground">
-          {c.cups <= 0
-            ? "Enter the cups sold this month to share the other costs across them."
-            : c.earnedPerCup > 0
-              ? `You took ${price(c.earnedPerCup)} per cup on average this month (${fmt(num(month.revenue))} over ${c.cups.toLocaleString("en-GB")} cups).`
-              : "Enter this month's sales under Sales & profit to compare with what you earn per cup."}
-        </p>
       </div>
     </Card>
   )

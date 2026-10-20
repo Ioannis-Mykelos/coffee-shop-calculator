@@ -42,8 +42,6 @@ export interface StaffItem { id: string; role: string; type: "FT" | "PT"; count:
 export interface RecipeItem { id: string; supplyId: string; qty: string }
 export interface CupSettings {
   recipe: RecipeItem[];
-  /** Cups sold this month; rent, staff and the rest are shared across them. */
-  cups: string;
   /** Target profit margin on the selling price, in %. */
   margin: string;
 }
@@ -153,7 +151,7 @@ export function sampleMonth(): MonthData {
     avgSale: "6",
     revenue: "26000",
   };
-  return { ...m, cup: defaultCup(m.supplies, "4500") };
+  return { ...m, cup: defaultCup(m.supplies) };
 }
 
 /** Typical amounts per cup, matched to supply items by name. */
@@ -165,14 +163,14 @@ const RECIPE_GUESS: [RegExp, Record<string, string>][] = [
 ];
 
 /** A starting recipe built from the month's supplies (beans, milk, cup, lid). */
-export function defaultCup(supplies: SupplyItem[], cups = ""): CupSettings {
+export function defaultCup(supplies: SupplyItem[]): CupSettings {
   const recipe: RecipeItem[] = [];
   for (const [re, perUnit] of RECIPE_GUESS) {
     const s = supplies.find((x) => re.test(x.label) && !recipe.some((r) => r.supplyId === x.id));
     const qty = s && perUnit[s.unit.trim().toLowerCase()];
     if (s && qty) recipe.push({ id: uid(), supplyId: s.id, qty });
   }
-  return { recipe, cups, margin: "30" };
+  return { recipe, margin: "30" };
 }
 
 /** Fill in fields added after a month was saved. */
@@ -245,27 +243,14 @@ export function profitOf(m: MonthData, total: number) {
   };
 }
 
-/** What one cup costs: its ingredients plus an equal share of every other cost. */
-export function cupCost(m: MonthData, total: number) {
+/** What one cup's ingredients cost, and the selling price that gives the target margin on them. */
+export function cupCost(m: MonthData) {
   const lines = (m.cup?.recipe ?? []).map((r) => {
     const s = m.supplies.find((x) => x.id === r.supplyId);
     return { ...r, supply: s, cost: s ? num(r.qty) * num(s.price) : 0 };
   });
   const ingredients = lines.reduce((a, x) => a + x.cost, 0);
-  const cups = num(m.cup?.cups);
-  const overhead = cups > 0 ? Math.max(0, total - ingredients * cups) / cups : 0;
-  const full = ingredients + overhead;
   const margin = Math.min(Math.max(num(m.cup?.margin), 0), 95) / 100;
-  const revenue = num(m.revenue);
-  return {
-    lines,
-    ingredients,
-    cups,
-    overhead,
-    full,
-    margin,
-    price: full / (1 - margin),
-    /** Average takings per cup sold, when sales are entered. */
-    earnedPerCup: cups > 0 && revenue > 0 ? revenue / cups : 0,
-  };
+  const price = ingredients / (1 - margin);
+  return { lines, ingredients, margin, price, profit: price - ingredients };
 }

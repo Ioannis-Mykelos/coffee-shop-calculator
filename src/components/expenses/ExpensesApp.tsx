@@ -61,7 +61,6 @@ export function ExpensesApp() {
       mm.supplies.forEach((x) => (x.qty = ""))
       mm.staff.forEach((x) => (x.count = ""))
       mm.revenue = ""
-      mm.cup.cups = ""
     })
 
   return (
@@ -117,7 +116,7 @@ export function ExpensesApp() {
                     </Button>
                   </div>
                 </main>
-                <CupCostCard month={m} total={totals.total} fmt={fmt} price={price} mutate={mutate} />
+                <CupCostCard month={m} price={price} mutate={mutate} />
               </div>
 
               <aside className="flex min-w-0 flex-[1_1_340px] flex-col gap-4">

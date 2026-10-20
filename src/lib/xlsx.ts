@@ -157,19 +157,15 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
       [],
     );
   }
-  const c = cupCost(m, t.total);
+  const c = cupCost(m);
   sum.push([H("Cost per cup"), H("")]);
   for (const l of c.lines) if (l.supply) sum.push([`${l.supply.label} (${num(l.qty)} ${l.supply.unit})`, { v: l.cost, s: S_MONEY }]);
-  sum.push(["Ingredients", { v: c.ingredients, s: S_MONEY }]);
-  if (c.cups > 0) {
-    sum.push(
-      ["Cups sold", c.cups],
-      ["Share of other costs", { v: c.overhead, s: S_MONEY }],
-      [B("Full cost of one cup"), { v: c.full, s: S_MONEY_BOLD }],
-      ["Target margin", { v: c.margin, s: S_PCT }],
-      [B("Suggested price (excl. VAT)"), { v: c.price, s: S_MONEY_BOLD }],
-    );
-  }
+  sum.push(
+    [B("Ingredients cost per cup"), { v: c.ingredients, s: S_MONEY_BOLD }],
+    ["Target margin", { v: c.margin, s: S_PCT }],
+    ["Margin per cup", { v: c.profit, s: S_MONEY }],
+    [B("Final price (excl. VAT)"), { v: c.price, s: S_MONEY_BOLD }],
+  );
   sum.push(
     [],
     ["Generated " + new Date().toLocaleString("en-GB")]
