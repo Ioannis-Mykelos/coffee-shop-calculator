@@ -131,8 +131,8 @@ export function BreakEvenCard({ month, total, fmt, currency, mutate }: { month: 
           <strong className="font-mono font-medium">{price(be.avgGross)}</strong>
         </div>
         <div className="flex justify-between">
-          <span>Excl. VAT</span>
-          <strong className="font-mono font-medium">{price(be.avg)}</strong>
+          <span>Other consumables per customer</span>
+          <strong className="font-mono font-medium">{price(be.extras)}</strong>
         </div>
         <div className="flex justify-between">
           <span>Cost per opening day</span>
