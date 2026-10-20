@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 
 import { AnalyticsView } from "@/components/expenses/AnalyticsView"
 import { AppHeader } from "@/components/expenses/AppHeader"
@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button"
 import { useExpensesStore } from "@/hooks/useExpensesStore"
 import {
   CATEGORIES,
-  CURRENCY,
   type CategoryKey,
   LINE_CATEGORIES,
   type LineCategoryKey,
@@ -21,13 +20,13 @@ import {
 } from "@/lib/expenses"
 import { buildXlsx, downloadBlob } from "@/lib/xlsx"
 
-const fmt = currencyFormatter(CURRENCY)
-
 export function ExpensesApp() {
   const { state, mutate, go } = useExpensesStore()
   const [tab, setTab] = useState<CategoryKey>("premises")
   const [view, setView] = useState<"calc" | "analytics">("calc")
   const [exportMsg, setExportMsg] = useState("")
+  const currency = state?.currency
+  const fmt = useMemo(() => currencyFormatter(currency), [currency])
 
   if (!state) return <div className="min-h-screen" aria-busy="true" />
 
@@ -45,7 +44,7 @@ export function ExpensesApp() {
 
   const submit = () => {
     try {
-      downloadBlob(buildXlsx(data, month, CURRENCY), `My-Coffee-Shop-${month}.xlsx`)
+      downloadBlob(buildXlsx(data, month, state.currency), `My-Coffee-Shop-${month}.xlsx`)
       setExportMsg(`${label} submitted. Spreadsheet saved.`)
     } catch {
       setExportMsg("Could not create the spreadsheet.")
@@ -73,7 +72,7 @@ export function ExpensesApp() {
         />
 
         {isAnalytics ? (
-          <AnalyticsView data={data} month={month} fmt={fmt} />
+          <AnalyticsView data={data} month={month} fmt={fmt} currency={state.currency} />
         ) : (
           <>
             <CategoryTabs active={tab} totals={totals} fmt={fmt} onPick={setTab} />
@@ -109,7 +108,7 @@ export function ExpensesApp() {
                 <TotalCard data={data} month={month} totals={totals} fmt={fmt} monthLabel={label} />
                 <BreakdownCard totals={totals} fmt={fmt} />
                 <BreakEvenCard month={m} total={totals.total} fmt={fmt} mutate={mutate} />
-                <HistoryCard data={data} month={month} fmt={fmt} />
+                <HistoryCard data={data} month={month} fmt={fmt} currency={state.currency} />
               </aside>
             </div>
           </>

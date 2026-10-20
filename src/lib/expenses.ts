@@ -1,5 +1,16 @@
-export const CURRENCY = "EUR" as const;
-export type Currency = "EUR" | "DKK" | "USD" | "GBP";
+/** ISO 4217 code, e.g. "EUR". Picked from the visitor's country on first visit (see lib/geo). */
+export type Currency = string;
+export const DEFAULT_CURRENCY: Currency = "EUR";
+
+export function isCurrency(v: unknown): v is Currency {
+  if (typeof v !== "string" || !/^[A-Z]{3}$/.test(v)) return false;
+  try {
+    new Intl.NumberFormat("en", { style: "currency", currency: v });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export const STORE_KEY = "my-coffee-shop-eur-v1";
 
@@ -43,7 +54,8 @@ export type MonthsData = Record<string, MonthData>;
 
 export type Totals = Record<CategoryKey, number> & { total: number };
 
-const LOCALES: Record<Currency, string> = { DKK: "da-DK", EUR: "de-DE", USD: "en-US", GBP: "en-GB" };
+/** Number style per currency; others use the browser's own locale. */
+const LOCALES: Record<string, string> = { DKK: "da-DK", EUR: "de-DE", USD: "en-US", GBP: "en-GB" };
 
 export function uid() {
   return "i" + Math.random().toString(36).slice(2, 9);
@@ -77,11 +89,11 @@ export function monthShort(k: string) {
   return monthName(k, { month: "short" }) + k.slice(2, 4);
 }
 
-export function currencyFormatter(cur: Currency = CURRENCY) {
-  const nf = new Intl.NumberFormat(LOCALES[cur] ?? "de-DE", { style: "currency", currency: cur, maximumFractionDigits: 0 });
+export function currencyFormatter(cur: Currency = DEFAULT_CURRENCY) {
+  const nf = new Intl.NumberFormat(LOCALES[cur], { style: "currency", currency: cur, maximumFractionDigits: 0 });
   return (n: number) => nf.format(Math.round(n));
 }
-export function compactFormatter(cur: Currency = CURRENCY) {
+export function compactFormatter(cur: Currency = DEFAULT_CURRENCY) {
   const cf = new Intl.NumberFormat("en-GB", { style: "currency", currency: cur, notation: "compact", maximumFractionDigits: 1 });
   return (n: number) => cf.format(n);
 }

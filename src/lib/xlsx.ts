@@ -56,7 +56,8 @@ function sheetXml(rows: Row[], widths: number[]) {
 }
 
 function stylesXml(cur: Currency) {
-  const code = { EUR: '"€"#,##0.00', DKK: '#,##0.00 "kr."', USD: '"$"#,##0.00', GBP: '"£"#,##0.00' }[cur] ?? "#,##0.00";
+  const known: Record<string, string> = { EUR: '"€"#,##0.00', DKK: '#,##0.00 "kr."', USD: '"$"#,##0.00', GBP: '"£"#,##0.00' };
+  const code = known[cur] ?? `#,##0.00 "${cur}"`;
   return (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
     `<numFmts count="1"><numFmt numFmtId="164" formatCode="${xesc(code)}"/></numFmts>` +
