@@ -1,5 +1,6 @@
 [build]
-  command = "npm run build"
+  # Production builds run the database migrations first (scripts/migrate.mjs); previews skip them.
+  command = "node scripts/migrate.mjs --netlify && npm run build"
   publish = ".next"
 
 [build.environment]
@@ -9,3 +10,4 @@
 # automatically for Next.js sites; declaring it keeps builds explicit.
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+

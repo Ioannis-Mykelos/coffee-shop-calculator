@@ -26,7 +26,7 @@ export function CategoryTabs({ active, totals, fmt, onPick }: CategoryTabsProps)
             )}
           >
             <span className="text-sm font-semibold">{c.label}</span>
-            <span className={cn("font-mono text-xs", on ? "text-[#D9D6EA]" : "text-muted-foreground")}>
+            <span className={cn("font-mono text-xs", on ? "text-[#E3D5C5]" : "text-muted-foreground")}>
               {fmt(totals[c.key])}
             </span>
           </button>

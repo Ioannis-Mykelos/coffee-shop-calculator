@@ -1,0 +1,186 @@
+import { describe, expect, it } from "vitest";
+import {
+  breakEven,
+  computeTotals,
+  consumablePrices,
+  cupCost,
+  type MonthData,
+  monthKey,
+  num,
+  profitOf,
+  sampleMonth,
+  shiftMonth,
+  staffLine,
+  withDefaults,
+} from "./expenses";
+
+/** An empty month, with only what a test sets. */
+function month(patch: Partial<MonthData> = {}): MonthData {
+  return withDefaults({
+    premises: [],
+    utilities: [],
+    supplies: [],
+    consumables: [],
+    staff: [],
+    other: [],
+    days: "",
+    coffeesPerCustomer: "1",
+    extrasPerCustomer: "",
+    revenue: "",
+    cup: { recipe: [], margin: "0", vat: "" },
+    consumablePricing: { margin: "0", vat: "" },
+    ...patch,
+  });
+}
+
+describe("num", () => {
+  it.each([
+    ["1200.50", 1200.5],
+    ["1,200.50", 1200.5],
+    ["1 200,50", 1200.5],
+    ["1.200,50", 1200.5],
+    ["1'200.50", 1200.5],
+    ["1,5", 1.5],
+    ["1.5", 1.5],
+    ["1,200", 1200],
+    ["1.500", 1500],
+    ["1,234,567", 1234567],
+    ["0.018", 0.018],
+    ["0,110", 0.11],
+    ["22", 22],
+    ["", 0],
+    ["abc", 0],
+  ])("reads %j as %d", (text, expected) => {
+    expect(num(text)).toBeCloseTo(expected, 6);
+  });
+
+  it("passes numbers through", () => {
+    expect(num(3.25)).toBe(3.25);
+    expect(num(Number.NaN)).toBe(0);
+  });
+});
+
+describe("months", () => {
+  it("steps across year boundaries", () => {
+    expect(shiftMonth("2026-12", 1)).toBe("2027-01");
+    expect(shiftMonth("2026-01", -1)).toBe("2025-12");
+    expect(monthKey(new Date(2026, 9, 28))).toBe("2026-10");
+  });
+});
+
+describe("totals", () => {
+  it("adds every category", () => {
+    const t = computeTotals(
+      month({
+        premises: [{ id: "a", label: "Rent", amount: "3,000" }],
+        utilities: [{ id: "b", label: "Power", amount: "560" }],
+        supplies: [{ id: "c", label: "Cups", qty: "3000", unit: "pcs", price: "0.11" }],
+        consumables: [{ id: "d", label: "Juice", qty: "200", unit: "bottles", price: "1.2" }],
+        staff: [{ id: "e", role: "Barista", type: "FT", count: "2", hours: "160", rate: "23", ins: "10" }],
+        other: [{ id: "f", label: "Fees", amount: "250" }],
+      }),
+    );
+    expect(t).toMatchObject({ premises: 3000, utilities: 560, supplies: 330, consumables: 240, other: 250 });
+    expect(t.staff).toBeCloseTo(2 * 160 * 23 * 1.1);
+    expect(t.total).toBeCloseTo(3000 + 560 + 330 + 240 + 250 + 8096);
+  });
+
+  it("prices staff with contributions on top", () => {
+    expect(staffLine({ id: "x", role: "Lead", type: "FT", count: "1", hours: "100", rate: "20", ins: "10" })).toEqual({
+      gross: 2000,
+      ins: 200,
+      count: 1,
+      total: 2200,
+    });
+  });
+});
+
+describe("cup and consumable prices", () => {
+  const supplies = [
+    { id: "beans", label: "Coffee beans", qty: "40", unit: "kg", price: "22" },
+    { id: "cups", label: "To-go cups", qty: "3000", unit: "pcs", price: "0.11" },
+  ];
+
+  it("costs a cup from its recipe, adds the margin on cost, then VAT", () => {
+    const c = cupCost(
+      month({
+        supplies,
+        cup: {
+          recipe: [
+            { id: "r1", supplyId: "beans", qty: "0.018" },
+            { id: "r2", supplyId: "cups", qty: "1" },
+          ],
+          margin: "100",
+          vat: "25",
+        },
+      }),
+    );
+    expect(c.ingredients).toBeCloseTo(0.396 + 0.11);
+    expect(c.price).toBeCloseTo(2 * 0.506);
+    expect(c.priceInclVat).toBeCloseTo(2 * 0.506 * 1.25);
+  });
+
+  it("ignores a recipe line whose supply was removed", () => {
+    const c = cupCost(month({ supplies, cup: { recipe: [{ id: "r", supplyId: "gone", qty: "1" }], margin: "0", vat: "" } }));
+    expect(c.ingredients).toBe(0);
+  });
+
+  it("prices each named consumable", () => {
+    const p = consumablePrices(
+      month({
+        consumables: [
+          { id: "j", label: "Juice", qty: "1", unit: "bottle", price: "2" },
+          { id: "n", label: " ", qty: "1", unit: "", price: "9" },
+        ],
+        consumablePricing: { margin: "50", vat: "10" },
+      }),
+    );
+    expect(p.items).toHaveLength(1);
+    expect(p.items[0]).toMatchObject({ cost: 2, price: 3 });
+    expect(p.items[0].priceInclVat).toBeCloseTo(3.3);
+  });
+});
+
+describe("break-even and profit", () => {
+  const m = month({
+    days: "25",
+    coffeesPerCustomer: "2",
+    extrasPerCustomer: "1.1",
+    supplies: [{ id: "cups", label: "Cups", qty: "1", unit: "pcs", price: "1" }],
+    cup: { recipe: [{ id: "r", supplyId: "cups", qty: "1" }], margin: "100", vat: "25" },
+    consumablePricing: { margin: "0", vat: "10" },
+  });
+
+  it("takes VAT out of each part of the sale at its own rate", () => {
+    const be = breakEven(m, 10_000);
+    // Two coffees at 2.50 incl. VAT, and 1.10 of extras incl. 10% VAT.
+    expect(be.avgGross).toBeCloseTo(6.1);
+    expect(be.avg).toBeCloseTo(4 + 1);
+    expect(be.customersMonth).toBe(2000);
+    expect(be.customersDay).toBe(80);
+    expect(be.perDay).toBe(400);
+  });
+
+  it("has no profit until sales are entered", () => {
+    expect(profitOf(m, 10_000)).toBeNull();
+    const p = profitOf({ ...m, revenue: "12,500" }, 10_000)!;
+    expect(p.profit).toBe(2500);
+    expect(p.margin).toBeCloseTo(0.2);
+    expect(p.coverage).toBeCloseTo(1.25);
+  });
+});
+
+describe("withDefaults", () => {
+  it("fills in fields added after a month was saved", () => {
+    const old = { premises: [], utilities: [], supplies: [], staff: [], other: [], days: "30" } as unknown as MonthData;
+    const m = withDefaults(old);
+    expect(m.consumables).toEqual([]);
+    expect(m.revenue).toBe("");
+    expect(m.cup.recipe).toEqual([]);
+    expect(m.consumablePricing.margin).toBe("150");
+  });
+
+  it("keeps the sample month valid", () => {
+    expect(computeTotals(sampleMonth()).total).toBeGreaterThan(0);
+  });
+});

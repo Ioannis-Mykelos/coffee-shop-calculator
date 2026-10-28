@@ -10,7 +10,7 @@ import { LocationBar } from "@/components/expenses/LocationBar"
 import { ConsumablePricingCard, CupCostCard, ProfitCard } from "@/components/expenses/ProfitCards"
 import { BreakEvenCard, BreakdownCard, HistoryCard, TotalCard } from "@/components/expenses/Sidebar"
 import { Button } from "@/components/ui/button"
-import { useExpensesStore } from "@/hooks/useExpensesStore"
+import { type StoreMode, useExpensesStore } from "@/hooks/useExpensesStore"
 import {
   CATEGORIES,
   type CategoryKey,
@@ -21,10 +21,16 @@ import {
   monthLabel,
   priceFormatter,
 } from "@/lib/expenses"
+import type { User } from "@/lib/auth-client"
 import { buildXlsx, downloadBlob } from "@/lib/xlsx"
+import { ImportBanner, LoadFailed } from "@/components/expenses/SyncNotices"
 
-export function ExpensesApp() {
-  const { state, location, mutate, go, setCurrency, setCountry } = useExpensesStore()
+/**
+ * The calculator. `mode` "accounts": figures are saved in the signed-in owner's account (`user`); "local": in this
+ * browser, with no login.
+ */
+export function ExpensesApp({ mode, user }: { mode: StoreMode; user?: User }) {
+  const { state, location, saveStatus, loadFailed, importOffer, resolveImport, mutate, go, setCurrency, setCountry } = useExpensesStore(mode)
   const [tab, setTab] = useState<CategoryKey>("premises")
   const [view, setView] = useState<"calc" | "analytics">("calc")
   const [exportMsg, setExportMsg] = useState("")
@@ -32,6 +38,7 @@ export function ExpensesApp() {
   const fmt = useMemo(() => currencyFormatter(currency), [currency])
   const price = useMemo(() => priceFormatter(currency), [currency])
 
+  if (loadFailed) return <LoadFailed />
   if (!state) return <div className="min-h-screen" aria-busy="true" />
 
   const { data, month } = state
@@ -49,7 +56,7 @@ export function ExpensesApp() {
   const submit = () => {
     try {
       downloadBlob(buildXlsx(data, month, state.currency), `My-Coffee-Shop-${month}.xlsx`)
-      setExportMsg(`${label} submitted. Spreadsheet saved.`)
+      setExportMsg(`Spreadsheet for ${label} downloaded.`)
     } catch {
       setExportMsg("Could not create the spreadsheet.")
     }
@@ -67,21 +74,24 @@ export function ExpensesApp() {
   return (
     <div className="min-h-screen">
       <div className="mx-auto flex max-w-[1280px] flex-col gap-6 px-6 pt-8 pb-16">
-        <LocationBar
-          location={location}
-          override={state.country}
-          currency={state.currency}
-          onCountry={setCountry}
-          onCurrency={setCurrency}
-        />
         <AppHeader
           monthLabel={label}
+          user={user}
+          saveStatus={mode === "accounts" ? saveStatus : null}
           isAnalytics={isAnalytics}
           exportMsg={exportMsg}
           onPrev={() => changeMonth(-1)}
           onNext={() => changeMonth(1)}
           onToggleView={() => setView(isAnalytics ? "calc" : "analytics")}
           onSubmit={submit}
+        />
+        {importOffer && <ImportBanner months={Object.keys(importOffer.data).length} onAnswer={resolveImport} />}
+        <LocationBar
+          location={location}
+          override={state.country}
+          currency={state.currency}
+          onCountry={setCountry}
+          onCurrency={setCurrency}
         />
 
         {isAnalytics ? (
@@ -114,7 +124,10 @@ export function ExpensesApp() {
                   {tab === "staff" && <StaffEditor month={m} mutate={mutate} fmt={fmt} />}
 
                   <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 text-[13px] text-muted-foreground">
-                    <span>Figures are saved in this browser. A new month starts as a copy of the month you came from, with sales left blank.</span>
+                    <span>
+                      {mode === "accounts" ? "Figures are saved in your account." : "Figures are saved in this browser."} A new month starts as a copy
+                      of the month you came from, with sales left blank.
+                    </span>
                     <Button variant="destructive" onClick={clearMonth} className="text-[13px]">
                       Clear amounts for {label}
                     </Button>

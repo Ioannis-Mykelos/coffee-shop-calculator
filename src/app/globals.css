@@ -5,6 +5,8 @@
   --font-sans: var(--font-plex-sans), system-ui, sans-serif;
   --font-display: var(--font-space-grotesk), sans-serif;
   --font-mono: var(--font-plex-mono), monospace;
+  --font-serif: var(--font-fraunces), Georgia, serif;
+  --font-brand: var(--font-montserrat), var(--font-space-grotesk), sans-serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -39,6 +41,13 @@
   --color-placeholder: var(--placeholder);
   --color-good: var(--good);
 
+  --color-espresso: var(--espresso);
+  --color-espresso-2: var(--espresso-2);
+  --color-crema: var(--crema);
+  --color-cream: var(--cream);
+  --color-oak: var(--oak);
+  --color-logo: var(--logo);
+
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -47,38 +56,47 @@
   --color-chart-6: var(--chart-6);
 }
 
+/* Crema: espresso, its crema, and the cream, oak and concrete of a Nordic café. */
 :root {
+  --espresso: #2a1d16;
+  --espresso-2: #4a3328;
+  --crema: #c9a578;
+  --cream: #faf6ef;
+  --oak: #ebdfcc;
+  /* The gold of the backlit sign */
+  --logo: #a8814f;
+
   --radius: 0.75rem;
-  --background: #f3f2f8;
-  --foreground: #1e1b3a;
+  --background: #f6f3ee;
+  --foreground: #2a1d16;
   --card: #ffffff;
-  --card-foreground: #1e1b3a;
-  --primary: #1e1b3a;
+  --card-foreground: #2a1d16;
+  --primary: #2a1d16;
   --primary-foreground: #ffffff;
   --secondary: #ffffff;
-  --secondary-foreground: #1e1b3a;
-  --muted: #f1f0f6;
-  --muted-foreground: #5a5772;
-  --accent: #f1f0f6;
-  --accent-foreground: #1e1b3a;
+  --secondary-foreground: #2a1d16;
+  --muted: #f1ece5;
+  --muted-foreground: #6b5d52;
+  --accent: #f1ece5;
+  --accent-foreground: #2a1d16;
   --destructive: #b23a57;
-  --border: #dedcea;
-  --input: #cbc8da;
-  --ring: #4b3fd1;
+  --border: #e6dfd5;
+  --input: #d3c8ba;
+  --ring: #9a5b2a;
 
-  --brand: #4b3fd1;
-  --brand-strong: #3428a8;
-  --brand-soft: #eeecfc;
-  --brand-ink: #45407a;
-  --subtle: #faf9fd;
-  --line: #e8e6f0;
-  --track: #ecebf3;
-  --ink-2: #403d57;
-  --placeholder: #8a879e;
+  --brand: #9a5b2a;
+  --brand-strong: #7a4520;
+  --brand-soft: #f6ece1;
+  --brand-ink: #5c3a22;
+  --subtle: #fbf9f6;
+  --line: #ece6dd;
+  --track: #efe9e1;
+  --ink-2: #4a3f37;
+  --placeholder: #968a7e;
   --good: #177a6b;
 
   /* Expense categories */
-  --chart-1: #4b3fd1;
+  --chart-1: #2f5d7c;
   --chart-2: #f2a23a;
   --chart-3: #1f9e8a;
   --chart-4: #d9486b;

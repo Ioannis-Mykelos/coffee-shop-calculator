@@ -152,7 +152,7 @@ export function StaffEditor({ month, mutate, fmt }: { month: MonthData; mutate: 
       <div className="grid grid-cols-3 gap-3">
         <StatTile label="Full-time" value={ft} className="bg-brand-soft" labelClass="text-brand-ink" valueClass="text-brand-strong" />
         <StatTile label="Part-time" value={pt} className="bg-[#FDEEF1]" labelClass="text-[#7A3348]" valueClass="text-[#A12F4F]" />
-        <StatTile label="Hours / month" value={Math.round(hours)} className="bg-muted" labelClass="text-[#4C4A60]" />
+        <StatTile label="Hours / month" value={Math.round(hours)} className="bg-muted" labelClass="text-ink-2" />
       </div>
 
       {month.staff.map((it) => {

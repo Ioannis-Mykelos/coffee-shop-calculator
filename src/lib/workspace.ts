@@ -1,0 +1,97 @@
+// A workspace: everything one owner has entered (every month's figures, the month they're on, the currency and the
+// country they picked). Saved in the browser in local mode, and in the owner's account otherwise (app/api/workspace).
+// Shared by the browser and the server, so the server checks what it's sent with the same rules the app saves by.
+
+import { type Currency, isCurrency, type MonthData, type MonthsData, withDefaults } from "./expenses";
+
+export interface Workspace {
+  month: string;
+  data: MonthsData;
+  currency: Currency;
+  /** Country the owner picked by hand (e.g. when on a VPN); overrides the detected one. */
+  country?: string;
+}
+
+/** Bounds on what one workspace may hold, so a request can't fill the database. */
+export const LIMITS = {
+  /** 20 years of months */
+  months: 240,
+  /** Items in one list (rent lines, supplies, staff rows…) */
+  items: 200,
+  /** Characters in a label */
+  text: 120,
+  /** Characters in a typed amount */
+  amount: 24,
+  /** Bytes of JSON in one save */
+  bytes: 2_000_000,
+} as const;
+
+const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
+const COUNTRY = /^[A-Z]{2}$/;
+
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+const text = (v: unknown, max: number = LIMITS.text) => (typeof v === "string" ? v.slice(0, max) : "");
+const amount = (v: unknown) => text(v, LIMITS.amount);
+const id = (v: unknown) => (typeof v === "string" && /^[\w-]{1,40}$/.test(v) ? v : "");
+
+/** Each element of `v` through `item`, up to the item limit; anything without an id is dropped. */
+function list<T extends { id: string }>(v: unknown, item: (x: Record<string, unknown>) => T): T[] {
+  if (!Array.isArray(v)) return [];
+  return v.slice(0, LIMITS.items).filter(isRecord).map(item).filter((x) => x.id);
+}
+
+const lineItems = (v: unknown) => list(v, (x) => ({ id: id(x.id), label: text(x.label), amount: amount(x.amount) }));
+const supplyItems = (v: unknown) =>
+  list(v, (x) => ({ id: id(x.id), label: text(x.label), qty: amount(x.qty), unit: text(x.unit, 20), price: amount(x.price) }));
+
+/** One month, keeping only known fields of the right type; fields added since it was saved are filled in. */
+export function cleanMonth(v: unknown): MonthData | null {
+  if (!isRecord(v)) return null;
+  const cup = isRecord(v.cup) ? v.cup : {};
+  const pricing = isRecord(v.consumablePricing) ? v.consumablePricing : {};
+  return withDefaults({
+    premises: lineItems(v.premises),
+    utilities: lineItems(v.utilities),
+    other: lineItems(v.other),
+    supplies: supplyItems(v.supplies),
+    consumables: supplyItems(v.consumables),
+    staff: list(v.staff, (x) => ({
+      id: id(x.id),
+      role: text(x.role),
+      type: x.type === "PT" ? ("PT" as const) : ("FT" as const),
+      count: amount(x.count),
+      hours: amount(x.hours),
+      rate: amount(x.rate),
+      ins: amount(x.ins),
+    })),
+    days: amount(v.days),
+    coffeesPerCustomer: amount(v.coffeesPerCustomer),
+    extrasPerCustomer: amount(v.extrasPerCustomer),
+    revenue: amount(v.revenue),
+    cup: {
+      recipe: list(cup.recipe, (x) => ({ id: id(x.id), supplyId: typeof x.supplyId === "string" ? id(x.supplyId) : "", qty: amount(x.qty) })),
+      margin: amount(cup.margin),
+      vat: amount(cup.vat),
+    },
+    consumablePricing: { margin: amount(pricing.margin), vat: amount(pricing.vat) },
+  });
+}
+
+/** A workspace as sent by a browser, cleaned up, or null if it isn't one. */
+export function cleanWorkspace(v: unknown): Workspace | null {
+  if (!isRecord(v) || !isRecord(v.data) || typeof v.month !== "string" || !MONTH_KEY.test(v.month)) return null;
+  const entries = Object.entries(v.data).filter(([k]) => MONTH_KEY.test(k));
+  if (entries.length > LIMITS.months) return null;
+  const data: MonthsData = {};
+  for (const [k, m] of entries) {
+    const month = cleanMonth(m);
+    if (month) data[k] = month;
+  }
+  if (!data[v.month]) return null;
+  return {
+    month: v.month,
+    data,
+    currency: isCurrency(v.currency) ? v.currency : "EUR",
+    ...(typeof v.country === "string" && COUNTRY.test(v.country) && { country: v.country }),
+  };
+}
