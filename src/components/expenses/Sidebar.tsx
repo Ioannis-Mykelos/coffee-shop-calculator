@@ -34,9 +34,9 @@ export function TotalCard({ data, month, totals, fmt, monthLabel }: { data: Mont
   }
   return (
     <section className="flex flex-col gap-1.5 rounded-2xl bg-primary p-6 text-primary-foreground">
-      <div className="text-xs uppercase tracking-[0.08em] text-[#C9C5E0]">Estimated expenses · {monthLabel}</div>
+      <div className="text-xs uppercase tracking-[0.08em] text-[#D9C9B6]">Estimated expenses · {monthLabel}</div>
       <div className="font-display text-[40px] font-bold tracking-[-0.02em]">{fmt(totals.total)}</div>
-      <div className={`text-sm ${dir === "up" ? "text-[#FFB3A7]" : dir === "down" ? "text-[#9FE3CF]" : "text-[#C9C5E0]"}`}>
+      <div className={`text-sm ${dir === "up" ? "text-[#F4B7A8]" : dir === "down" ? "text-[#A6DCC9]" : "text-[#D9C9B6]"}`}>
         {dir === "up" && "▲ "}
         {dir === "down" && "▼ "}
         {text}
