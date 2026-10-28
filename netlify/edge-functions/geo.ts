@@ -5,7 +5,7 @@ interface Context {
   geo?: { city?: string; country?: { code?: string } }
 }
 
-export default (_req: Request, context: Context) => {
+export default function geo(_req: Request, context: Context) {
   const code = context.geo?.country?.code
   const country = code && /^[A-Z]{2}$/i.test(code) ? code.toUpperCase() : null
   return Response.json(

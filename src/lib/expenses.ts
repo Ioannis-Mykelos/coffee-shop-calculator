@@ -81,9 +81,26 @@ export function uid() {
   return "i" + Math.random().toString(36).slice(2, 9);
 }
 
-/** Lenient parse: accepts "1 200,50" as well as "1200.50". */
+/**
+ * Lenient parse of a typed amount, in either number style: "1200.50", "1,200.50", "1 200,50", "1.200,50" and "1,5"
+ * all work. With both separators, the last one is the decimal point. One kind used more than once groups thousands,
+ * and so does a single one followed by exactly three digits ("1,200" → 1200, "1.500" → 1500), unless the whole part
+ * is 0 ("0.018" stays a fraction: per-cup amounts are small).
+ */
 export function num(v: string | number | null | undefined) {
-  const n = parseFloat(String(v ?? "").replace(/\s/g, "").replace(",", "."));
+  if (typeof v === "number") return isFinite(v) ? v : 0;
+  let s = String(v ?? "").replace(/[\s '’]/g, "");
+  const lastDot = s.lastIndexOf("."), lastComma = s.lastIndexOf(",");
+  if (lastDot >= 0 && lastComma >= 0) {
+    const decimal = lastDot > lastComma ? "." : ",";
+    s = s.replace(decimal === "." ? /,/g : /\./g, "").replace(",", ".");
+  } else if (lastDot >= 0 || lastComma >= 0) {
+    const sep = lastDot >= 0 ? "." : ",";
+    const parts = s.split(sep);
+    const thousands = parts.length > 2 || (parts[1].length === 3 && /^-?\d*[1-9]\d*$/.test(parts[0]));
+    s = thousands ? parts.join("") : parts.join(".");
+  }
+  const n = parseFloat(s);
   return isFinite(n) ? n : 0;
 }
 
