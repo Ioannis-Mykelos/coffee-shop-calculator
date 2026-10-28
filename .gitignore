@@ -4,3 +4,6 @@
 next-env.d.ts
 *.tsbuildinfo
 .env*
+
+# The template of settings is shared; real values stay local.
+!.env.example

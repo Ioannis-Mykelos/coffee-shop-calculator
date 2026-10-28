@@ -2,8 +2,16 @@
 export type Currency = string;
 export const DEFAULT_CURRENCY: Currency = "EUR";
 
+/** The ISO 4217 codes this browser or server knows, or null where the list isn't available (older browsers). */
+let known: Set<string> | null | undefined;
+const knownCurrencies = () =>
+  (known ??= typeof Intl.supportedValuesOf === "function" ? new Set(Intl.supportedValuesOf("currency")) : null);
+
+/** A real currency code. Intl.NumberFormat formats any three letters, so the list of known codes decides. */
 export function isCurrency(v: unknown): v is Currency {
   if (typeof v !== "string" || !/^[A-Z]{3}$/.test(v)) return false;
+  const list = knownCurrencies();
+  if (list) return list.has(v);
   try {
     new Intl.NumberFormat("en", { style: "currency", currency: v });
     return true;
