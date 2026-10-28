@@ -1,8 +1,8 @@
-# ☕ My Coffee Shop — Monthly Expenses Calculator
+# Crema Cost Planner
 
-A month-by-month expense calculator for a small coffee shop. Enter rent, utilities, supplies, staff and other costs, and see straight away what the month costs you, where the money goes, and how many customers you need each day to break even. Compare months, quarters, half-years and years, and export any month to an Excel workbook.
+**The numbers behind every cup.** Crema is the back office for independent cafés: monthly costs, the true cost and price of every cup, staff, break-even and profit, in one calm place. Each owner has an account (Google, or email and password with optional two-step login), and their figures follow them to any device.
 
-![Calculator view](docs/screenshots/calculator.png)
+![Crema home page](docs/screenshots/home.jpg)
 
 ---
 
@@ -12,220 +12,229 @@ A month-by-month expense calculator for a small coffee shop. Enter rent, utiliti
 - [Screenshots](#screenshots)
 - [Tech stack](#tech-stack)
 - [Getting started](#getting-started)
-- [Available scripts](#available-scripts)
-- [Project structure](#project-structure)
+- [Scripts](#scripts)
+- [Accounts and security](#accounts-and-security)
+- [How figures are saved](#how-figures-are-saved)
+- [Database migrations](#database-migrations)
 - [How the numbers are calculated](#how-the-numbers-are-calculated)
-- [Data & privacy](#data--privacy)
-- [Configuration](#configuration)
+- [Project structure](#project-structure)
+- [Testing and CI](#testing-and-ci)
 - [Deploying to Netlify](#deploying-to-netlify)
+- [Before launch](#before-launch)
 
 ---
 
 ## Features
 
-**Calculator**
+**Home page** (`/`): who Crema is and what it does, with the café photography. The figures shown on it (cup price, break-even, the month's total) are worked out by the app's own sums from its sample café, so the page never shows a number the product wouldn't.
 
-- **Five expense categories** with a tab each, showing a running total:
-  - **Rent & premises**, **Utilities** and **Other**: free-form line items with a monthly amount.
-  - **Supplies & consumables**: quantity (with a unit such as pcs, kg or L) × price per unit, with a line total.
-  - **Staff**: one row per employee category (e.g. *Barista, part-time*). Pay = employees × hours × hourly rate, plus an insurance & contributions percentage. Summary tiles show full-time and part-time head count and total hours.
-- **Estimated monthly total** compared with the previous month (▲ more / ▼ less, in amount and %).
-- **Where the money goes**: a stacked bar and legend with each category's share.
-- **Break-even check**: enter opening days and average sale per customer (excl. VAT) to get cost per opening day and the customers needed per month and per day.
-- **Last months**: a line chart of up to six months ending at the selected month.
-- **Month navigation**: step back and forward with the arrows. A month you haven't visited yet starts as a copy of the month you came from, so you only change what's different.
-- **Clear amounts** for the current month while keeping the line items.
+**Accounts** (`/login`, `/app/account`)
 
-**Analytics**
+- Sign up with Google, or with email and password (confirmed by an emailed link).
+- **Two-step login**: a 6-digit code from an authenticator app (Google or Microsoft Authenticator, 1Password, Authy) after the password, set up with a QR code, with ten single-use recovery codes.
+- Forgot password, change password (logs out every other device), delete account (with all its figures).
 
-- Group by **Monthly, 3 months, 6 months or Yearly**.
-- KPI cards: total, average per month, change vs the previous period, biggest cost, and customers needed per day.
-- Stacked bar chart of the last 12 periods. Click a bar to inspect that period.
-- Breakdown table per category (total, share, per month, change vs previous) and a list of the months in the period.
+**Calculator** (`/app`)
 
-**Export**
-
-- **Submit month** downloads `My-Coffee-Shop-YYYY-MM.xlsx`, a real Excel workbook with four sheets: *Summary*, *Expenses*, *Staff* and *History*. Money cells are formatted as currency. The writer is built in, so no spreadsheet library is needed.
+- **Six cost categories**, a tab each with a running total: Rent & premises, Utilities, Supplies, Consumables, Staff, Other.
+- **Cost per cup**: a recipe built from the Supplies (beans, milk, cup, lid), then a margin on cost and VAT, giving the customer price.
+- **Consumables pricing**: the same cost, margin and VAT for food and drinks bought in to sell.
+- **Break-even check**: customers needed per month and per day, from coffees per customer and other spend, each with its own VAT taken out.
+- **Sales & profit**: enter the month's takings for the profit or loss, margin, and distance from break-even.
+- **Months**: step back and forward; a new month starts as a copy of the one you came from, with sales blank.
+- **Analytics**: group by month, 3 months, 6 months or year, with KPIs, a stacked bar chart and a breakdown table.
+- **Export month**: a real Excel workbook (Summary, Expenses, Staff, History), from a built-in writer with no library.
+- **Location and currency**: the visitor's country (from Netlify's IP geolocation, else the browser language) picks the currency, with a flag. Both can be changed by hand. 70+ currencies.
 
 ## Screenshots
 
-| Staff costs | Analytics |
+| Log in | Two-step login |
 | --- | --- |
-| ![Staff tab](docs/screenshots/staff.png) | ![Analytics view](docs/screenshots/analytics.png) |
+| ![Log in](docs/screenshots/login.jpg) | ![The authenticator code step](docs/screenshots/two-step-login.jpg) |
+
+| Calculator | Turning on two-step login |
+| --- | --- |
+| ![Calculator](docs/screenshots/calculator.jpg) | ![QR code and key](docs/screenshots/two-step-setup.jpg) |
 
 ## Tech stack
 
 | | |
 | --- | --- |
-| Framework | [Next.js 15](https://nextjs.org/) (App Router) + React 19 |
+| Framework | [Next.js 15](https://nextjs.org/) (App Router, Server Components) + React 19 |
 | Language | TypeScript (strict) |
-| Styling | [Tailwind CSS 4](https://tailwindcss.com/), theme tokens in `src/app/globals.css` |
-| UI primitives | [shadcn/ui](https://ui.shadcn.com/)-style components (`new-york` style) built on Radix Slot + `class-variance-authority` |
-| Icons | [lucide-react](https://lucide.dev/) |
-| Fonts | Space Grotesk (display), IBM Plex Sans (body), IBM Plex Mono (figures), via `next/font` |
-| Persistence | Browser `localStorage`, no backend |
+| Styling | [Tailwind CSS 4](https://tailwindcss.com/); theme tokens in `src/app/globals.css` |
+| UI | [shadcn/ui](https://ui.shadcn.com/)-style primitives, [lucide-react](https://lucide.dev/) icons |
+| Fonts | Fraunces (headlines), Montserrat (wordmark), Space Grotesk (display), IBM Plex Sans and Mono, via `next/font` |
+| Auth | [Auth.js v5](https://authjs.dev/) (Google + credentials), JWT sessions, bcrypt, TOTP (RFC 6238) |
+| Database | MongoDB Atlas (official driver + Auth.js adapter) |
+| Email | SMTP via Nodemailer |
+| Tests | Vitest + Testing Library |
+| Hosting | Netlify (`@netlify/plugin-nextjs`) |
 
 ## Getting started
 
-### Prerequisites
-
-- **Node.js 20 or newer** (developed on Node 22). Check with `node -v`.
-- **npm 10+** (comes with Node).
-
-### 1. Install dependencies
-
-From the project folder:
+Requires **Node.js 22** (`.nvmrc`).
 
 ```bash
 npm install
-```
-
-### 2. Run the development server
-
-```bash
 npm run dev
 ```
 
-Open **http://localhost:3000** in your browser. The page reloads automatically when you edit the code.
+Open **http://localhost:3000**.
 
-To use another port:
+**Two modes**, picked from the environment:
 
-```bash
-npm run dev -- --port 3100
-```
+| | Local mode (default) | Accounts mode |
+| --- | --- | --- |
+| When | `MONGODB_URI` or `AUTH_SECRET` is blank | Both are set |
+| Log in | None: `/app` opens straight away, `/login` redirects to it | Google and email + password, two-step login |
+| Figures | In this browser (`localStorage`) | In the owner's account, on every device |
 
-### 3. Production build (optional)
+Local mode means a fresh clone and CI work without any setup.
 
-To check that everything compiles, then serve the optimized build locally:
+**For accounts**, copy [`.env.example`](.env.example) to `.env.local` and fill it in:
 
-```bash
-npm run build
-```
+1. **MongoDB**: create a free Atlas cluster and a database user. Put the connection string in `MONGODB_URI`, ending with the database name (`…mongodb.net/crema`). Under Network Access, allow your IP address (and `0.0.0.0/0` for Netlify, whose functions have no fixed IPs).
+2. **AUTH_SECRET**: `npx auth secret`. Keep it stable: it also encrypts two-step login secrets.
+3. **Google** (optional): create an OAuth client in Google Cloud Console with the redirect URI `http://localhost:3000/api/auth/callback/google` (and your site's URL). Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Without them, the Google button isn't shown.
+4. **Email** (optional locally): without `EMAIL_SERVER_HOST`, development prints the account emails (confirmation and reset links) to the `npm run dev` terminal. Production needs SMTP.
+5. Run `npm run db:migrate` once to create the indexes.
 
-```bash
-npm run start
-```
-
-`npm run build` also type-checks and lints the project and fails if anything is wrong. It's worth running before every deploy.
-
-## Available scripts
+## Scripts
 
 | Command | What it does |
 | --- | --- |
-| `npm run dev` | Starts the dev server with hot reload on port 3000 |
-| `npm run build` | Creates an optimized production build (includes type-check and lint) |
-| `npm run start` | Serves the production build (run `build` first) |
-| `npm run lint` | Runs ESLint with the Next.js rules |
+| `npm run dev` | Development server on port 3000 |
+| `npm run build` | Production build |
+| `npm start` | Serve the production build |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | ESLint (Next.js core-web-vitals and TypeScript rules) |
+| `npm test` | All unit tests once |
+| `npm run test:watch` | Re-run tests on change |
+| `npm run db:migrate` | Run the database migrations against `MONGODB_URI` from `.env.local` |
+
+## Accounts and security
+
+Server code is in [`src/lib/server`](src/lib/server), guarded by `server-only`; the browser side is [`src/lib/auth-client.ts`](src/lib/auth-client.ts).
+
+- **Joining** emails a confirmation link; the account only gets its password when the link is used. Joining again with an unconfirmed address replaces the pending password, and only the newest link works, so nobody can put their password on your address.
+- **No account enumeration**: sign-up, resend and "forgot password" answer the same for every address, and "confirm your email first" is only said after the password matched. Unknown addresses take as long to check as wrong passwords.
+- **Passwords**: bcrypt, cost 12, 8 to 72 characters (bcrypt reads 72 bytes).
+- **Email links** are 32 random bytes; only their SHA-256 is stored. Confirmation links last 24 hours, reset links 1 hour, and each works once. Opening a link only shows a button, because mail scanners open links before people do.
+- **Two-step login**: TOTP (HMAC-SHA1, 6 digits, 30 s, ±1 step), each code accepted once. The secret is encrypted with AES-256-GCM using a key derived from `AUTH_SECRET`. Recovery codes are stored as hashes, and using one emails the owner. Logging in with Google relies on Google's own security.
+- **Sessions**: an httpOnly JWT cookie for 30 days, or 12 hours without "Keep me logged in". A password change or reset, or deleting the account, ends every older session.
+- **Rate limits**: log in 10 tries per address and 30 per IP every 15 minutes; sign-up, resend, forgot and reset per IP per hour; account settings 10 password checks per 15 minutes. Account emails are throttled to one a minute per address. With Upstash Redis set (`UPSTASH_REDIS_REST_*`), every server instance shares the counts; otherwise each counts in its own memory.
+- **Open redirects**: `/login?next=` only accepts paths on this site ([`next-path.ts`](src/lib/next-path.ts)).
+- **Headers**: `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Strict-Transport-Security` and `Permissions-Policy` on every response ([`next.config.ts`](next.config.ts)).
+
+## How figures are saved
+
+A **workspace** ([`src/lib/workspace.ts`](src/lib/workspace.ts)) is everything one owner has entered: every month, the month they're on, the currency and the country.
+
+- **Accounts mode**: [`GET/PUT /api/workspace`](src/app/api/workspace/route.ts) keeps one document per owner in `workspaces`. The browser saves 0.8 s after the last change, and the header shows *Saving… / Saved*.
+- **Two devices**: every save names the version it was made from. One made from an older version (another device saved since) is refused with `409`, and the browser shows what's saved instead of overwriting it ("Updated from another device").
+- **Checked on the server**: the server rebuilds every workspace from known fields only, with bounds on size (240 months, 200 items per list, 2 MB per save). The same function reads figures saved in a browser.
+- **Moving in**: on a new account, figures this browser saved before accounts existed are offered for import, once.
+- **Local mode**: as before, in `localStorage` (key `my-coffee-shop-eur-v1`, kept so earlier figures still load).
+
+## Database migrations
+
+Indexes are made by numbered migrations in [`scripts/migrate.mjs`](scripts/migrate.mjs), each run once per database and recorded in the `migrations` collection. The app never creates indexes itself, so a cold start doesn't wait for them.
+
+- **Netlify** runs them before every production build (`netlify.toml`). Deploy previews and branch deploys skip them, so a branch never changes the production database before it's merged. If a migration fails, the build fails and the current version stays live.
+- **By hand**: `npm run db:migrate`.
+- **Changing an index or moving data**: add a new migration; never edit one that has run.
+
+Collections: `users`, `accounts` and `sessions` (Auth.js), `workspaces`, `migrations`.
+
+## How the numbers are calculated
+
+All calculations live in [`src/lib/expenses.ts`](src/lib/expenses.ts), with tests in `expenses.test.ts`.
+
+| Figure | Formula |
+| --- | --- |
+| Line-item categories | sum of *amount per month* |
+| Supplies, Consumables | Σ quantity × price per unit |
+| Staff (per row) | employees × hours × hourly pay × (1 + contributions % / 100) |
+| Month total | sum of the six categories |
+| Cup cost | Σ recipe amount × the supply's price per unit |
+| Cup price | cost × (1 + margin %), then × (1 + VAT %) for the customer |
+| Average sale, excl. VAT | coffees × cup price ÷ (1 + cup VAT) + other spend ÷ (1 + consumables VAT) |
+| Customers needed per month / day | ⌈ month total ÷ average sale ⌉, then ÷ opening days |
+| Profit | sales (excl. VAT) − month total |
+
+Typed amounts accept either number style: `1200.50`, `1,200.50`, `1 200,50`, `1.200,50` and `1,5`. A single separator followed by exactly three digits groups thousands (`1,200` is 1200), unless the whole part is 0 (`0.018` kg stays a fraction).
+
+The break-even counts every cost as fixed. Supplies and consumables really grow with sales, so it's a little cautious (it slightly overstates the customers needed).
 
 ## Project structure
 
 ```
-coffee-shop-expenses/
-├── docs/screenshots/            # Images used in this README
+crema/
+├── docs/screenshots/              README images
+├── netlify/edge-functions/geo.ts  IP location on Netlify (/api/geo)
+├── public/
+│   ├── home/                      café photography, the menu board, the sign, the link-preview image
+│   ├── brand/                     Google "G" for the sign-in button
+│   └── flags/                     country flags for the location bar
+├── scripts/migrate.mjs            database migrations (npm run db:migrate)
 ├── src/
 │   ├── app/
-│   │   ├── globals.css          # Tailwind setup + color/font theme tokens
-│   │   ├── layout.tsx           # Root layout, fonts, page metadata
-│   │   └── page.tsx             # Home route → <ExpensesApp />
+│   │   ├── page.tsx               / → home page
+│   │   ├── login/                 log in / sign up
+│   │   ├── app/                   /app → calculator; /app/account → account & security
+│   │   ├── verify-email/, reset-password/, auth/error/
+│   │   ├── terms/, privacy/       drafts (see Before launch)
+│   │   ├── icon.svg, apple-icon.png
+│   │   └── api/
+│   │       ├── auth/[...nextauth] Auth.js
+│   │       ├── account/*          join, resend, forgot, reset, settings, password, two-step, delete
+│   │       ├── workspace/         the owner's figures
+│   │       └── geo/               IP location (local fallback for the edge function)
 │   ├── components/
-│   │   ├── expenses/
-│   │   │   ├── ExpensesApp.tsx  # Page shell: header, tabs, editor, sidebar, view switch
-│   │   │   ├── AppHeader.tsx    # Logo, month switcher, Analytics + Submit buttons
-│   │   │   ├── CategoryTabs.tsx # Category tabs with running totals
-│   │   │   ├── Editors.tsx      # Line items, supplies and staff editors
-│   │   │   ├── Sidebar.tsx      # Total, breakdown, break-even and history cards
-│   │   │   └── AnalyticsView.tsx# Period grouping, KPIs, bar chart, breakdown table
-│   │   └── ui/                  # Reusable primitives: Button, Input/Field, Card
-│   ├── hooks/
-│   │   └── useExpensesStore.ts  # Month data state + localStorage persistence
-│   └── lib/
-│       ├── expenses.ts          # Types, categories, sample data, all calculations
-│       ├── xlsx.ts              # Dependency-free .xlsx writer + download helper
-│       └── utils.ts             # cn() class-name helper
-├── netlify.toml                 # Netlify build settings
-└── package.json
+│   │   ├── home/                  home page, legal page frame
+│   │   ├── auth/                  log-in panel, reset form, page frame
+│   │   ├── account/               account & security
+│   │   ├── expenses/              the calculator
+│   │   ├── brand/                 the Crema mark and wordmark
+│   │   └── ui/                    Button, Input, Card
+│   ├── hooks/useExpensesStore.ts  figures: load, save, versions, import
+│   ├── lib/
+│   │   ├── expenses.ts            types, sample data, every calculation
+│   │   ├── workspace.ts           the saved shape and its checks
+│   │   ├── geo.ts                 country → currency, location lookup
+│   │   ├── xlsx.ts                dependency-free Excel writer
+│   │   ├── auth-client.ts, workspace-client.ts   browser side of the API
+│   │   └── server/                auth, accounts, TOTP, database, mailer, rate limits, config
+│   └── types/next-auth.d.ts
+├── .env.example                   every setting; copy to .env.local
+└── netlify.toml                   build command (migrations, then build)
 ```
 
-## How the numbers are calculated
+## Testing and CI
 
-All calculations live in [`src/lib/expenses.ts`](src/lib/expenses.ts).
+`npm test` runs the unit tests: every calculation and number format, workspace checks, redirects, migrations, and the account rules ported from a production auth system (joining, links, password reset, two-step login with recovery codes, rate limits).
 
-| Figure | Formula |
-| --- | --- |
-| Line item categories | sum of *amount per month* |
-| Supplies | Σ quantity × price per unit |
-| Staff (per category) | employees × hours × hourly pay × (1 + insurance % / 100) |
-| Month total | premises + utilities + supplies + staff + other |
-| Cost per opening day | month total ÷ opening days |
-| Customers needed this month | ⌈ month total ÷ average sale ⌉ |
-| Customers needed per day | ⌈ month total ÷ average sale ÷ opening days ⌉ |
-| Analytics "vs previous" | change in **average per month** against the previous period, so periods with missing months stay comparable |
+GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs typecheck, lint, tests and a production build on every pull request and push to `main`.
 
-Number inputs accept either decimal separator (`1.5` or `1,5`).
-
-## Data & privacy
-
-- Everything is stored **only in your browser** (`localStorage`, key `my-coffee-shop-eur-v1`). Nothing is sent to a server.
-- Data is per browser and per device. Clearing site data, or using a private window, starts fresh with the sample figures.
-- To back up or share figures, use **Submit month**. The Excel file's *History* sheet holds every month you've entered.
-
-## Configuration
-
-| What | Where |
-| --- | --- |
-| Currency (`EUR`, `DKK`, `USD`, `GBP`) | `CURRENCY` in `src/lib/expenses.ts` |
-| Brand / accent color | `--brand` (and related tokens) in `src/app/globals.css` |
-| Category colors | `--chart-1` … `--chart-5` in `src/app/globals.css` |
-| Category names and descriptions | `CATEGORIES` in `src/lib/expenses.ts` |
-| Sample data for a first visit | `sampleMonth()` in `src/lib/expenses.ts` |
-
-> **Note:** if you change the currency, also change `STORE_KEY` so amounts saved in one currency aren't shown as another.
+The full account flow (sign up, confirm the email, log in, save and reload figures, turn on two-step login, log in with a code, the version conflict, and the API refusing anonymous requests) was checked end to end against a real MongoDB and an SMTP catcher.
 
 ## Deploying to Netlify
 
-The repository includes a [`netlify.toml`](netlify.toml), so Netlify picks up the right settings automatically:
+`netlify.toml` sets the build command (migrations, then `next build`), Node 22 and the Next.js runtime.
 
-```toml
-[build]
-  command = "npm run build"
-  publish = ".next"
+1. Import the repository in Netlify (**Add new site → Import an existing project**).
+2. Under **Site configuration → Environment variables**, add `MONGODB_URI`, `AUTH_SECRET`, `EMAIL_SERVER_HOST`, `EMAIL_SERVER_PORT`, `EMAIL_SERVER_USER`, `EMAIL_SERVER_PASSWORD` and `EMAIL_FROM`, plus `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` for Google sign-in. Netlify provides the site's URL for email links; set `APP_URL` only for a custom domain before it's primary.
+3. In Google Cloud Console, add `https://<your-site>/api/auth/callback/google` as an authorized redirect URI.
+4. Deploy. The production build log shows `Migrating: …` the first time, then `the database is up to date`.
 
-[build.environment]
-  NODE_VERSION = "22"
+Without `MONGODB_URI` and `AUTH_SECRET`, the deployed site runs in local mode.
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
-```
+## Before launch
 
-### Option A: from a Git repository (recommended)
-
-1. Push the project to GitHub, GitLab or Bitbucket.
-2. In Netlify, choose **Add new site → Import an existing project** and pick the repository.
-3. Netlify detects Next.js and reads `netlify.toml`. Leave the build command (`npm run build`) and publish directory (`.next`) as they are.
-4. Click **Deploy**. Every push to the main branch redeploys the site, and pull requests get their own preview URLs.
-
-### Option B: from the command line
-
-```bash
-npm install -g netlify-cli
-```
-
-```bash
-netlify login
-```
-
-```bash
-netlify init
-```
-
-```bash
-netlify deploy --build --prod
-```
-
-`netlify init` links the folder to a new or existing site. Run `netlify deploy --build` without `--prod` first to get a draft URL to check.
-
-### Notes
-
-- No environment variables are needed. The app has no backend or secrets.
-- Because data lives in each visitor's browser, every person (and every device) has their own separate figures.
-- To use your own domain, go to **Site configuration → Domain management** in Netlify.
+- **Legal**: `/terms` and `/privacy` are drafts with `[bracketed]` placeholders (company name, address, contact, email provider, governing law). Have a lawyer finish them.
+- **Contact**: there's no contact address on the site yet. Add one to the home page's About section and the legal pages.
+- **Email**: an SMTP provider with your domain (SPF and DKIM set up), and `EMAIL_FROM` on that domain.
+- **Logo**: `components/brand/Logo.tsx` and `src/app/icon.svg` are a hand-drawn vector of the sign. Replace them with the designer's master vector when there is one.
+- **Region**: put the Atlas cluster in the same region as Netlify's functions (Site configuration → Functions → Region) to keep requests fast.
+- **Rate limits**: add Upstash Redis so limits hold across every function instance.
