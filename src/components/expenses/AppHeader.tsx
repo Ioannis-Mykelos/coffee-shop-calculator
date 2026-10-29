@@ -46,9 +46,11 @@ interface AppHeaderProps {
   onNext: () => void
   onView: (view: View) => void
   onSubmit: () => void
+  /** Shown on the right of the view tabs (the location and currency) */
+  toolbar?: React.ReactNode
 }
 
-export function AppHeader({ monthLabel, user, saveStatus, view, exportMsg, onPrev, onNext, onView, onSubmit }: AppHeaderProps) {
+export function AppHeader({ monthLabel, user, saveStatus, view, exportMsg, onPrev, onNext, onView, onSubmit, toolbar }: AppHeaderProps) {
   const current = VIEWS.find((v) => v.key === view) ?? VIEWS[0]
   return (
     <header className="flex flex-col gap-4">
@@ -91,26 +93,29 @@ export function AppHeader({ monthLabel, user, saveStatus, view, exportMsg, onPre
         </div>
       </div>
 
-      <nav aria-label="Views" className="flex w-fit max-w-full flex-wrap gap-1 rounded-xl border bg-card p-1">
-        {VIEWS.map(({ key, label, Icon }) => {
-          const on = key === view
-          return (
-            <button
-              key={key}
-              type="button"
-              aria-current={on ? "page" : undefined}
-              onClick={() => onView(key)}
-              className={cn(
-                "flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-4 text-sm font-semibold outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-                on ? "bg-primary text-primary-foreground" : "bg-transparent text-ink-2 hover:bg-accent",
-              )}
-            >
-              <Icon aria-hidden="true" className="size-4" />
-              {label}
-            </button>
-          )
-        })}
-      </nav>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <nav aria-label="Views" className="flex w-fit max-w-full flex-wrap gap-1 rounded-xl border bg-card p-1">
+          {VIEWS.map(({ key, label, Icon }) => {
+            const on = key === view
+            return (
+              <button
+                key={key}
+                type="button"
+                aria-current={on ? "page" : undefined}
+                onClick={() => onView(key)}
+                className={cn(
+                  "flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-4 text-sm font-semibold outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                  on ? "bg-primary text-primary-foreground" : "bg-transparent text-ink-2 hover:bg-accent",
+                )}
+              >
+                <Icon aria-hidden="true" className="size-4" />
+                {label}
+              </button>
+            )
+          })}
+        </nav>
+        {toolbar}
+      </div>
     </header>
   )
 }
