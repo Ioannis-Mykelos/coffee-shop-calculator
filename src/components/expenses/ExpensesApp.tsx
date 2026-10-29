@@ -3,12 +3,14 @@
 import { useMemo, useState } from "react"
 
 import { AnalyticsView } from "@/components/expenses/AnalyticsView"
-import { AppHeader } from "@/components/expenses/AppHeader"
+import { AppHeader, type View } from "@/components/expenses/AppHeader"
 import { CategoryTabs } from "@/components/expenses/CategoryTabs"
 import { LineItemsEditor, StaffEditor, SuppliesEditor } from "@/components/expenses/Editors"
 import { LocationBar } from "@/components/expenses/LocationBar"
+import { MenuView } from "@/components/expenses/MenuView"
 import { ConsumablePricingCard, CupCostCard, ProfitCard } from "@/components/expenses/ProfitCards"
 import { BreakEvenCard, BreakdownCard, HistoryCard, TotalCard } from "@/components/expenses/Sidebar"
+import { WhatIfView } from "@/components/expenses/WhatIfView"
 import { Button } from "@/components/ui/button"
 import { type StoreMode, useExpensesStore } from "@/hooks/useExpensesStore"
 import {
@@ -32,7 +34,7 @@ import { ImportBanner, LoadFailed } from "@/components/expenses/SyncNotices"
 export function ExpensesApp({ mode, user }: { mode: StoreMode; user?: User }) {
   const { state, location, saveStatus, loadFailed, importOffer, resolveImport, mutate, go, setCurrency, setCountry } = useExpensesStore(mode)
   const [tab, setTab] = useState<CategoryKey>("premises")
-  const [view, setView] = useState<"calc" | "analytics">("calc")
+  const [view, setView] = useState<View>("calc")
   const [exportMsg, setExportMsg] = useState("")
   const currency = state?.currency
   const fmt = useMemo(() => currencyFormatter(currency), [currency])
@@ -46,7 +48,6 @@ export function ExpensesApp({ mode, user }: { mode: StoreMode; user?: User }) {
   const totals = computeTotals(m)
   const label = monthLabel(month)
   const cat = CATEGORIES.find((c) => c.key === tab) ?? CATEGORIES[0]
-  const isAnalytics = view === "analytics"
 
   const changeMonth = (delta: number) => {
     go(delta)
@@ -68,6 +69,7 @@ export function ExpensesApp({ mode, user }: { mode: StoreMode; user?: User }) {
       mm.supplies.forEach((x) => (x.qty = ""))
       mm.consumables.forEach((x) => (x.qty = ""))
       mm.staff.forEach((x) => (x.count = ""))
+      mm.menu.drinks.forEach((x) => (x.cups = ""))
       mm.revenue = ""
     })
 
@@ -78,11 +80,11 @@ export function ExpensesApp({ mode, user }: { mode: StoreMode; user?: User }) {
           monthLabel={label}
           user={user}
           saveStatus={mode === "accounts" ? saveStatus : null}
-          isAnalytics={isAnalytics}
+          view={view}
           exportMsg={exportMsg}
           onPrev={() => changeMonth(-1)}
           onNext={() => changeMonth(1)}
-          onToggleView={() => setView(isAnalytics ? "calc" : "analytics")}
+          onView={setView}
           onSubmit={submit}
         />
         {importOffer && <ImportBanner months={Object.keys(importOffer.data).length} onAnswer={resolveImport} />}
@@ -94,8 +96,12 @@ export function ExpensesApp({ mode, user }: { mode: StoreMode; user?: User }) {
           onCurrency={setCurrency}
         />
 
-        {isAnalytics ? (
+        {view === "analytics" ? (
           <AnalyticsView data={data} month={month} fmt={fmt} currency={state.currency} />
+        ) : view === "menu" ? (
+          <MenuView month={m} mutate={mutate} fmt={fmt} price={price} />
+        ) : view === "whatif" ? (
+          <WhatIfView key={month} month={m} fmt={fmt} price={price} />
         ) : (
           <>
             <CategoryTabs active={tab} totals={totals} fmt={fmt} onPick={setTab} />

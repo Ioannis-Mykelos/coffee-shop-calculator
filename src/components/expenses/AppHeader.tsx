@@ -2,12 +2,37 @@
 
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
-import { ChartColumn, ChevronDown, ChevronLeft, ChevronRight, CloudAlert, CloudCheck, Download, LoaderCircle, LogOut, Settings } from "lucide-react"
+import {
+  Calculator,
+  ChartColumn,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CloudAlert,
+  CloudCheck,
+  Coffee,
+  Download,
+  LoaderCircle,
+  LogOut,
+  Settings,
+  SlidersHorizontal,
+} from "lucide-react"
 
 import { CremaLogo } from "@/components/brand/Logo"
 import { Button } from "@/components/ui/button"
 import type { SaveStatus } from "@/hooks/useExpensesStore"
 import { type User, logOut } from "@/lib/auth-client"
+import { cn } from "@/lib/utils"
+
+export type View = "calc" | "menu" | "whatif" | "analytics"
+
+/** The four views, with each one's heading and the line under it. */
+const VIEWS: { key: View; label: string; Icon: typeof Calculator; title: string; sub: (month: string) => string }[] = [
+  { key: "calc", label: "Expenses", Icon: Calculator, title: "Monthly expenses", sub: (m) => `Costs, cup prices and break-even for ${m}` },
+  { key: "menu", label: "Menu", Icon: Coffee, title: "Your menu", sub: (m) => `What each drink costs to make and earns you, ${m}` },
+  { key: "whatif", label: "What if", Icon: SlidersHorizontal, title: "What if…", sub: (m) => `Try a change on ${m}'s figures before it happens` },
+  { key: "analytics", label: "Analytics", Icon: ChartColumn, title: "Analytics", sub: () => "Your months side by side" },
+]
 
 interface AppHeaderProps {
   monthLabel: string
@@ -15,15 +40,16 @@ interface AppHeaderProps {
   user?: User
   /** Accounts mode: where saving stands; null in local mode */
   saveStatus: SaveStatus | null
-  isAnalytics: boolean
+  view: View
   exportMsg: string
   onPrev: () => void
   onNext: () => void
-  onToggleView: () => void
+  onView: (view: View) => void
   onSubmit: () => void
 }
 
-export function AppHeader({ monthLabel, user, saveStatus, isAnalytics, exportMsg, onPrev, onNext, onToggleView, onSubmit }: AppHeaderProps) {
+export function AppHeader({ monthLabel, user, saveStatus, view, exportMsg, onPrev, onNext, onView, onSubmit }: AppHeaderProps) {
+  const current = VIEWS.find((v) => v.key === view) ?? VIEWS[0]
   return (
     <header className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -38,8 +64,8 @@ export function AppHeader({ monthLabel, user, saveStatus, isAnalytics, exportMsg
 
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="m-0 font-display text-[26px] font-semibold tracking-[-0.01em]">Monthly expenses</h1>
-          <div className="text-sm text-muted-foreground">Costs, cup prices and break-even for {monthLabel}</div>
+          <h1 className="m-0 font-display text-[26px] font-semibold tracking-[-0.01em]">{current.title}</h1>
+          <div className="text-sm text-muted-foreground">{current.sub(monthLabel)}</div>
         </div>
         <div className="flex flex-col items-end gap-1.5">
           <div className="flex flex-wrap items-center justify-end gap-3">
@@ -52,10 +78,6 @@ export function AppHeader({ monthLabel, user, saveStatus, isAnalytics, exportMsg
                 <ChevronRight className="size-5" />
               </Button>
             </div>
-            <Button variant="outline" size="lg" aria-pressed={isAnalytics} onClick={onToggleView}>
-              {isAnalytics ? <ChevronLeft className="size-[18px]" /> : <ChartColumn className="size-[18px]" />}
-              <span>{isAnalytics ? "Back to calculator" : "Analytics"}</span>
-            </Button>
             <Button size="lg" className="px-[22px]" onClick={onSubmit}>
               <Download className="size-[18px]" />
               <span>Export month</span>
@@ -68,6 +90,27 @@ export function AppHeader({ monthLabel, user, saveStatus, isAnalytics, exportMsg
           )}
         </div>
       </div>
+
+      <nav aria-label="Views" className="flex w-fit max-w-full flex-wrap gap-1 rounded-xl border bg-card p-1">
+        {VIEWS.map(({ key, label, Icon }) => {
+          const on = key === view
+          return (
+            <button
+              key={key}
+              type="button"
+              aria-current={on ? "page" : undefined}
+              onClick={() => onView(key)}
+              className={cn(
+                "flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-4 text-sm font-semibold outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                on ? "bg-primary text-primary-foreground" : "bg-transparent text-ink-2 hover:bg-accent",
+              )}
+            >
+              <Icon aria-hidden="true" className="size-4" />
+              {label}
+            </button>
+          )
+        })}
+      </nav>
     </header>
   )
 }

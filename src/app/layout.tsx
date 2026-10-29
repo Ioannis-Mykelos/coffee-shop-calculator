@@ -1,39 +1,58 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans, Montserrat, Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import { appUrl } from "@/lib/server/config";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
+// The fonts are in the repository (./fonts, Latin, from Fontsource 5.3.0; SIL Open Font License), not fetched from
+// Google Fonts at build time: Google sometimes answered the build with a file URL next/font couldn't read, failing it.
+// next/font needs each list written out in full.
+
+const spaceGrotesk = localFont({
   variable: "--font-space-grotesk",
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
+  src: [
+    { path: "./fonts/space-grotesk-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/space-grotesk-latin-600-normal.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/space-grotesk-latin-700-normal.woff2", weight: "700", style: "normal" },
+  ],
 });
 
-const plexSans = IBM_Plex_Sans({
+const plexSans = localFont({
   variable: "--font-plex-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  src: [
+    { path: "./fonts/ibm-plex-sans-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/ibm-plex-sans-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/ibm-plex-sans-latin-600-normal.woff2", weight: "600", style: "normal" },
+  ],
 });
 
-const plexMono = IBM_Plex_Mono({
+const plexMono = localFont({
   variable: "--font-plex-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
+  src: [
+    { path: "./fonts/ibm-plex-mono-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/ibm-plex-mono-latin-500-normal.woff2", weight: "500", style: "normal" },
+  ],
 });
 
 // The home page's headlines: a soft serif with the warmth of a café menu board.
-const fraunces = Fraunces({
+const fraunces = localFont({
   variable: "--font-fraunces",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  style: ["normal", "italic"],
+  src: [
+    { path: "./fonts/fraunces-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/fraunces-latin-400-italic.woff2", weight: "400", style: "italic" },
+    { path: "./fonts/fraunces-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/fraunces-latin-500-italic.woff2", weight: "500", style: "italic" },
+    { path: "./fonts/fraunces-latin-600-normal.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/fraunces-latin-600-italic.woff2", weight: "600", style: "italic" },
+  ],
 });
 
 // The wordmark: the geometric capitals of the brand's sign.
-const montserrat = Montserrat({
+const montserrat = localFont({
   variable: "--font-montserrat",
-  subsets: ["latin"],
-  weight: ["500", "600"],
+  src: [
+    { path: "./fonts/montserrat-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/montserrat-latin-600-normal.woff2", weight: "600", style: "normal" },
+  ],
 });
 
 const DESCRIPTION =

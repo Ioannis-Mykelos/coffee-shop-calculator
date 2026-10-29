@@ -42,8 +42,10 @@
 - **Break-even check**: customers needed per month and per day, from coffees per customer and other spend, each with its own VAT taken out.
 - **Sales & profit**: enter the month's takings for the profit or loss, margin, and distance from break-even.
 - **Months**: step back and forward; a new month starts as a copy of the one you came from, with sales blank.
+- **Menu**: every drink with its recipe from the Supplies, menu price (VAT included) and cups sold a month, ranked by what it earns. Cards for the best earner, the thinnest margin and the menu's total; per drink, the price that reaches a target margin. A plant milk option swaps in plant milk with its extra charge. A month saved before menus gets one drink from its cup recipe.
+- **What if**: sliders for bean and milk prices, rent, extra staff hours, drink prices and cups sold, plus one-tap scenarios, tried on the month's own figures without saving. Shows profit, costs, sales and break-even before and after, and what would keep today's profit: a price rise in %, or more customers a day.
 - **Analytics**: group by month, 3 months, 6 months or year, with KPIs, a stacked bar chart and a breakdown table.
-- **Export month**: a real Excel workbook (Summary, Expenses, Staff, History), from a built-in writer with no library.
+- **Export month**: a real Excel workbook (Summary, Expenses, Staff, Menu, History), from a built-in writer with no library.
 - **Location and currency**: the visitor's country (from Netlify's IP geolocation, else the browser language) picks the currency, with a flag. Both can be changed by hand. 70+ currencies.
 
 ## Screenshots
@@ -149,7 +151,7 @@ Collections: `users`, `accounts` and `sessions` (Auth.js), `workspaces`, `migrat
 
 ## How the numbers are calculated
 
-All calculations live in [`src/lib/expenses.ts`](src/lib/expenses.ts), with tests in `expenses.test.ts`.
+The month's calculations live in [`src/lib/expenses.ts`](src/lib/expenses.ts), the menu's in [`menu.ts`](src/lib/menu.ts) and the what-if's in [`what-if.ts`](src/lib/what-if.ts), each with its tests beside it.
 
 | Figure | Formula |
 | --- | --- |
@@ -162,6 +164,11 @@ All calculations live in [`src/lib/expenses.ts`](src/lib/expenses.ts), with test
 | Average sale, excl. VAT | coffees × cup price ÷ (1 + cup VAT) + other spend ÷ (1 + consumables VAT) |
 | Customers needed per month / day | ⌈ month total ÷ average sale ⌉, then ÷ opening days |
 | Profit | sales (excl. VAT) − month total |
+| Drink margin (Menu) | menu price ÷ (1 + VAT) − Σ recipe amount × the supply's price per unit |
+| Price for the target margin | cost ÷ (1 − target %) × (1 + VAT) |
+| What if: costs | beans and milk Supplies × (1 + change), all Supplies and Consumables × (1 + cups sold change), Rent & premises × (1 + change), + extra hours × 52 ⁄ 12 × the staff's average hourly cost (part-timers' when there are any) |
+| What if: sales | takings, or the menu's cups × price excl. VAT; × (1 + cups sold change), + cups × average drink price excl. VAT × price change |
+| What if: keep today's profit | lost profit ÷ (cups × average drink price excl. VAT), rounded up to a whole %; or lost profit ÷ average sale ÷ opening days customers |
 
 Typed amounts accept either number style: `1200.50`, `1,200.50`, `1 200,50`, `1.200,50` and `1,5`. A single separator followed by exactly three digits groups thousands (`1,200` is 1200), unless the whole part is 0 (`0.018` kg stays a fraction).
 
@@ -195,12 +202,14 @@ crema/
 │   │   ├── home/                  home page, legal page frame
 │   │   ├── auth/                  log-in panel, reset form, page frame
 │   │   ├── account/               account & security
-│   │   ├── expenses/              the calculator
+│   │   ├── expenses/              the calculator: Expenses, Menu, What if and Analytics views
 │   │   ├── brand/                 the Crema mark and wordmark
 │   │   └── ui/                    Button, Input, Card
 │   ├── hooks/useExpensesStore.ts  figures: load, save, versions, import
 │   ├── lib/
-│   │   ├── expenses.ts            types, sample data, every calculation
+│   │   ├── expenses.ts            types, sample data, the month's calculations
+│   │   ├── menu.ts                each drink's cost, margin and target price
+│   │   ├── what-if.ts             a change tried on the month's figures
 │   │   ├── workspace.ts           the saved shape and its checks
 │   │   ├── geo.ts                 country → currency, location lookup
 │   │   ├── xlsx.ts                dependency-free Excel writer
