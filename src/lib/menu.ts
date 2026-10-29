@@ -26,8 +26,6 @@ export interface DrinkFigures {
   monthly: number;
   /** The price (VAT included) that reaches the target margin; 0 when there's no cost or no reachable target */
   targetPrice: number;
-  /** Whether the plant milk option applies to this drink (it has the milk it replaces) */
-  hasMilk: boolean;
 }
 
 /** The menu's VAT (for drinks without their own) and the target margin, as fractions. */
@@ -38,33 +36,24 @@ export function menuRates(m: MonthData) {
   };
 }
 
-/** Whether the plant milk option is set up: both supplies picked and still on the Supplies list. */
-export function plantMilkReady(m: MonthData) {
-  const { milkId, plantId } = m.menu.plantMilk;
-  return !!milkId && !!plantId && milkId !== plantId && [milkId, plantId].every((id) => m.supplies.some((s) => s.id === id));
-}
-
 /** What a recipe line can be made from: Supplies, then Consumables (a pastry bought in to sell). */
 export function ingredients(m: Pick<MonthData, "supplies" | "consumables">) {
   return [...m.supplies, ...m.consumables];
 }
 
-/** One item's figures; with `plant`, made with plant milk and priced with its surcharge. */
-export function drinkFigures(m: MonthData, d: Drink, plant = false): DrinkFigures {
+/** One item's figures. */
+export function drinkFigures(m: MonthData, d: Drink): DrinkFigures {
   const { target } = menuRates(m);
   const vat = drinkVat(m, d);
-  const { milkId, plantId, surcharge } = m.menu.plantMilk;
-  const hasMilk = plantMilkReady(m) && d.recipe.some((r) => r.supplyId === milkId);
-  const swap = plant && hasMilk;
   const stock = ingredients(m);
   const lines = d.recipe.map((r) => {
-    const supplyId = swap && r.supplyId === milkId ? plantId : r.supplyId;
+    const { supplyId } = r;
     const s = stock.find((x) => x.id === supplyId);
     const qty = num(r.qty);
     return { id: r.id, supplyId, label: s?.label.trim() || "Pick a supply", unit: s?.unit ?? "", qty, cost: s ? qty * num(s.price) : 0 };
   });
   const cost = lines.reduce((a, l) => a + l.cost, 0);
-  const price = num(d.price) + (swap ? num(surcharge) : 0);
+  const price = num(d.price);
   const net = price / (1 + vat);
   const margin = net - cost;
   const cups = Math.max(num(d.cups), 0);
@@ -82,7 +71,6 @@ export function drinkFigures(m: MonthData, d: Drink, plant = false): DrinkFigure
     cups,
     monthly: margin * cups,
     targetPrice: cost > 0 && target < 1 ? (cost / (1 - target)) * (1 + vat) : 0,
-    hasMilk,
   };
 }
 
@@ -90,8 +78,8 @@ export function drinkFigures(m: MonthData, d: Drink, plant = false): DrinkFigure
  * Every item, the best earners first: by profit a month when cups sold are known, else by margin per cup. Plus the
  * month's totals across the menu.
  */
-export function menuSummary(m: MonthData, plant = false) {
-  const drinks = m.menu.drinks.map((d) => drinkFigures(m, d, plant));
+export function menuSummary(m: MonthData) {
+  const drinks = m.menu.drinks.map((d) => drinkFigures(m, d));
   const withCups = drinks.some((d) => d.cups > 0);
   drinks.sort((a, b) => (withCups ? b.monthly - a.monthly : 0) || b.margin - a.margin);
   const priced = drinks.filter((d) => d.price > 0);

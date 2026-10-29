@@ -80,8 +80,6 @@ export interface MenuSettings {
   foodVat: string;
   /** The margin a suggested price aims for, in % of the price excl. VAT. */
   target: string;
-  /** Plant milk: the supply it stands in for, the plant milk supply, and its extra charge (VAT included). */
-  plantMilk: { milkId: string; plantId: string; surcharge: string };
 }
 
 export interface MonthData {
@@ -248,7 +246,6 @@ export function sampleMonth(): MonthData {
     vat: "25",
     foodVat: "",
     target: "70",
-    plantMilk: { milkId: milk.id, plantId: "", surcharge: "" },
   };
   return { ...m, takings: {}, cup: { ...defaultCup(m.supplies), margin: "250", vat: "25" }, consumablePricing: { margin: "150", vat: "25" }, menu };
 }
@@ -256,8 +253,6 @@ export function sampleMonth(): MonthData {
 /** The menu for a month saved before menus existed: one drink, from its cup recipe and price. */
 export function defaultMenu(m: Pick<MonthData, "supplies" | "cup">): MenuSettings {
   const c = cupCost(m);
-  const milk = m.supplies.find((s) => /milk/i.test(s.label) && !PLANT_MILK.test(s.label));
-  const plant = m.supplies.find((s) => PLANT_MILK.test(s.label));
   return {
     drinks: [
       {
@@ -273,11 +268,8 @@ export function defaultMenu(m: Pick<MonthData, "supplies" | "cup">): MenuSetting
     vat: m.cup.vat,
     foodVat: "",
     target: "70",
-    plantMilk: { milkId: milk?.id ?? "", plantId: plant?.id ?? "", surcharge: "" },
   };
 }
-
-export const PLANT_MILK = /oat|soy|almond|plant|coconut|rice/i;
 
 /** Typical amounts per cup, matched to supply items by name. */
 const RECIPE_GUESS: [RegExp, Record<string, string>][] = [

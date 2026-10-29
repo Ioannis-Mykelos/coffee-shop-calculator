@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cupCost, type Drink, type MonthData, withDefaults } from "./expenses";
-import { drinkFigures, menuSummary, plantMilkReady } from "./menu";
+import { drinkFigures, menuSummary } from "./menu";
 
 const supplies = [
   { id: "b", label: "Coffee beans", qty: "", unit: "kg", price: "20" },
@@ -34,7 +34,7 @@ const espresso: Drink = {
   ],
 };
 
-function month(drinks: Drink[] = [latte, espresso], plantMilk = { milkId: "m", plantId: "o", surcharge: "0.50" }): MonthData {
+function month(drinks: Drink[] = [latte, espresso]): MonthData {
   return withDefaults({
     premises: [],
     utilities: [],
@@ -48,7 +48,7 @@ function month(drinks: Drink[] = [latte, espresso], plantMilk = { milkId: "m", p
     revenue: "",
     cup: { recipe: [], margin: "0", vat: "" },
     consumablePricing: { margin: "0", vat: "" },
-    menu: { drinks, vat: "25", foodVat: "", target: "60", plantMilk },
+    menu: { drinks, vat: "25", foodVat: "", target: "60" },
   });
 }
 
@@ -72,23 +72,6 @@ describe("drinkFigures", () => {
     expect(takeAway.vat).toBeCloseTo(0.11);
     expect(takeAway.margin).toBeCloseTo(5 / 1.11 - 0.7);
     expect(takeAway.targetPrice).toBeCloseTo(1.75 * 1.11);
-  });
-
-  it("swaps in plant milk with its surcharge, only for drinks with the milk", () => {
-    const m = month();
-    const d = drinkFigures(m, latte, true);
-    expect(d.lines.map((l) => l.supplyId)).toEqual(["b", "o", "c"]);
-    expect(d.cost).toBeCloseTo(0.9);
-    expect(d.price).toBeCloseTo(5.5);
-    expect(d.margin).toBeCloseTo(3.5); // 5.50 ÷ 1.25 − 0.90
-    expect(drinkFigures(m, espresso, true)).toMatchObject({ hasMilk: false, price: 2.5 });
-  });
-
-  it("offers plant milk only when both supplies are picked and still listed", () => {
-    expect(plantMilkReady(month())).toBe(true);
-    expect(plantMilkReady(month(undefined, { milkId: "m", plantId: "", surcharge: "" }))).toBe(false);
-    expect(plantMilkReady(month(undefined, { milkId: "m", plantId: "gone", surcharge: "" }))).toBe(false);
-    expect(drinkFigures(month(undefined, { milkId: "m", plantId: "", surcharge: "1" }), latte, true).price).toBe(5);
   });
 });
 
@@ -138,6 +121,6 @@ describe("a month saved before menus", () => {
     expect(m.menu.drinks[0]).toMatchObject({ name: "Coffee", price: cupCost(old).priceInclVat.toFixed(2), cups: "" });
     expect(m.menu.drinks[0].recipe[0]).toMatchObject({ supplyId: "b", qty: "0.02" });
     expect(m.menu.drinks[0].recipe[0].id).not.toBe("x");
-    expect(m.menu).toMatchObject({ vat: "25", plantMilk: { milkId: "m", plantId: "o" } });
+    expect(m.menu).toMatchObject({ vat: "25" });
   });
 });
