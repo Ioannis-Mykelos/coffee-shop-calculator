@@ -71,9 +71,9 @@ describe("whatIf", () => {
 
   it("estimates sales from the menu without takings, and works back cups from takings without a menu", () => {
     expect(whatIf(month({ revenue: "" }), NO_CHANGES)).toMatchObject({ salesSource: "menu", before: { sales: 3000 } });
-    const noCups = month({ menu: { ...month().menu, drinks: [] } });
-    expect(whatIf(noCups, NO_CHANGES)).toMatchObject({ salesSource: "takings", cups: 1500 });
-    const neither = whatIf(month({ revenue: "", menu: { ...month().menu, drinks: [] } }), { ...NO_CHANGES, beans: 50 });
+    const noCups = { ...month().menu, drinks: [{ ...month().menu.drinks[0], cups: "" }] };
+    expect(whatIf(month({ menu: noCups }), NO_CHANGES)).toMatchObject({ salesSource: "takings", cups: 1500 });
+    const neither = whatIf(month({ revenue: "", menu: noCups }), { ...NO_CHANGES, beans: 50 });
     expect(neither).toMatchObject({ salesSource: null, after: { sales: null, profit: null }, keep: null });
   });
 });

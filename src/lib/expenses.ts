@@ -78,12 +78,13 @@ export interface MonthData {
   staff: StaffItem[];
   other: LineItem[];
   days: string;
-  /** Average coffees per customer; each is sold at the cup price incl. VAT. */
+  /** Average drinks per customer; each is sold at the menu's average drink price incl. VAT. */
   coffeesPerCustomer: string;
   /** Average spend per customer on other consumables (juice, pastries…), incl. VAT. */
   extrasPerCustomer: string;
   /** Actual sales this month, excl. VAT. Blank until the month's takings are known. */
   revenue: string;
+  /** The single cup recipe from before menus: only read to build a month's first menu (defaultMenu). */
   cup: CupSettings;
   /** Selling consumables: margin on cost and VAT, both in %. */
   consumablePricing: { margin: string; vat: string };
@@ -317,26 +318,39 @@ export function staffSummary(m: MonthData) {
   return { ft, pt, hours };
 }
 
+/**
+ * The average drink on the menu, VAT included: weighted by cups sold when they're known, else the plain average of
+ * the drinks with a price.
+ */
+export function averageDrinkPrice(m: Pick<MonthData, "menu">) {
+  const priced = m.menu.drinks.map((d) => ({ price: num(d.price), cups: Math.max(num(d.cups), 0) })).filter((d) => d.price > 0);
+  const cups = priced.reduce((a, d) => a + d.cups, 0);
+  if (cups > 0) return priced.reduce((a, d) => a + d.price * d.cups, 0) / cups;
+  return priced.length ? priced.reduce((a, d) => a + d.price, 0) / priced.length : 0;
+}
+
 export function breakEven(m: MonthData, total: number) {
   const days = num(m.days);
-  const cup = cupCost(m);
+  const cupPrice = averageDrinkPrice(m);
+  const vat = Math.max(num(m.menu.vat), 0) / 100;
   const coffees = num(m.coffeesPerCustomer);
-  const coffeeSpend = coffees * cup.priceInclVat;
+  const coffeeSpend = coffees * cupPrice;
   const extras = num(m.extrasPerCustomer);
   const extrasVat = Math.max(num(m.consumablePricing?.vat), 0) / 100;
   /** What one customer pays on average, incl. VAT. */
   const avgGross = coffeeSpend + extras;
   /** Costs are excl. VAT, so they're covered by the sale minus its VAT (each at its own rate). */
-  const avg = coffeeSpend / (1 + cup.vat) + extras / (1 + extrasVat);
+  const avg = coffeeSpend / (1 + vat) + extras / (1 + extrasVat);
   return {
     days,
     coffees,
-    cupPrice: cup.priceInclVat,
+    /** The menu's average drink price, VAT included */
+    cupPrice,
     coffeeSpend,
     extras,
     avg,
     avgGross,
-    vat: cup.vat,
+    vat,
     extrasVat,
     perDay: days > 0 ? total / days : 0,
     customersMonth: avg > 0 ? Math.ceil(total / avg) : 0,
@@ -362,7 +376,7 @@ export function profitOf(m: MonthData, total: number) {
   };
 }
 
-/** What one cup's ingredients cost, and the selling price with the margin added on that cost. */
+/** What the old single cup's ingredients cost, and its price with the margin on that cost: for months saved before menus. */
 export function cupCost(m: Pick<MonthData, "supplies" | "cup">) {
   const lines = (m.cup?.recipe ?? []).map((r) => {
     const s = m.supplies.find((x) => x.id === r.supplyId);
