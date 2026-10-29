@@ -224,11 +224,14 @@ The full account flow (sign up, confirm the email, log in, save and reload figur
 `netlify.toml` sets the build command (migrations, then `next build`), Node 22 and the Next.js runtime.
 
 1. Import the repository in Netlify (**Add new site → Import an existing project**).
-2. Under **Site configuration → Environment variables**, add `MONGODB_URI`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Add `EMAIL_SERVER_HOST`, `EMAIL_SERVER_PORT`, `EMAIL_SERVER_USER`, `EMAIL_SERVER_PASSWORD` and `EMAIL_FROM` to offer email + password log in too. Netlify provides the site's URL for email links; set `APP_URL` only for a custom domain before it's primary.
-3. In Google Cloud Console, add `https://<your-site>/api/auth/callback/google` as an authorized redirect URI.
-4. Deploy. The production build log shows `Migrating: …` the first time, then `the database is up to date`.
+2. Under **Site configuration → Environment variables**, add `MONGODB_URI`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Add `EMAIL_SERVER_HOST`, `EMAIL_SERVER_PORT`, `EMAIL_SERVER_USER`, `EMAIL_SERVER_PASSWORD` and `EMAIL_FROM` to offer email + password log in too.
+3. Add `AUTH_URL` with **a value for the Production context only**: the site's address, e.g. `https://crema-cost-planner.netlify.app` (no trailing slash). Without it, Auth.js takes the host Netlify hands the function, `main--<your-site>.netlify.app`, and Google refuses the log in with `Error 400: redirect_uri_mismatch`. Leave the other contexts empty, or deploy previews would send Google logins back to the live site. Email links use `AUTH_URL` too, so `APP_URL` isn't needed.
+4. In Google Cloud Console, add `https://<your-site>/api/auth/callback/google` as an authorized redirect URI.
+5. Deploy. The production build log shows `Migrating: …` the first time, then `the database is up to date`.
 
-Without `MONGODB_URI` and `AUTH_SECRET`, the deployed site runs in local mode.
+Without `MONGODB_URI` and `AUTH_SECRET`, the deployed site runs in local mode (the build log warns).
+
+**Moving to your own domain**: make it the primary domain in Netlify, change `AUTH_URL` to it, and add its `/api/auth/callback/google` address to the Google client's redirect URIs (keep the old one until the move is done).
 
 ## Before launch
 
