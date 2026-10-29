@@ -53,6 +53,21 @@ describe("MenuView", () => {
     expect(kept(screen.getByRole("complementary", { name: /Espresso/ }))).toContain(price(2.084));
   });
 
+  it("takes a drink's own VAT, such as take-away's, else the menu's", async () => {
+    const user = userEvent.setup();
+    render(<Harness view="menu" />);
+    await user.click(rows()[2]);
+    const vat = within(screen.getByRole("complementary", { name: /Espresso/ })).getByLabelText("VAT (%)") as HTMLInputElement;
+    expect(vat.value).toBe("");
+    expect(vat.placeholder).toBe("25");
+    await user.type(vat, "11");
+    const editor = screen.getByRole("complementary", { name: /Espresso/ });
+    expect(within(editor).getByText("VAT (11%)")).toBeTruthy();
+    // 2.80 ÷ 1.11 − 0.556
+    expect(kept(editor)).toContain(price(2.8 / 1.11 - 0.556));
+    expect(rows().find((r) => r.textContent?.startsWith("Espresso"))?.textContent).toContain("VAT 11%");
+  });
+
   it("adds a drink and opens it to fill in", async () => {
     const user = userEvent.setup();
     render(<Harness view="menu" />);

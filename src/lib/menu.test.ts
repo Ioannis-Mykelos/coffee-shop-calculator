@@ -12,6 +12,7 @@ const latte: Drink = {
   id: "latte",
   name: "Latte",
   price: "5.00",
+  vat: "",
   cups: "100",
   recipe: [
     { id: "r1", supplyId: "b", qty: "0.02" },
@@ -23,6 +24,7 @@ const espresso: Drink = {
   id: "espresso",
   name: "Espresso",
   price: "2.50",
+  vat: "",
   cups: "300",
   recipe: [
     { id: "r4", supplyId: "b", qty: "0.02" },
@@ -58,6 +60,16 @@ describe("drinkFigures", () => {
     expect(d.monthly).toBeCloseTo(330);
     // 0.7 ÷ (1 − 60%) = 1.75 without VAT
     expect(d.targetPrice).toBeCloseTo(2.1875);
+  });
+
+  it("uses a drink's own VAT when it has one, else the menu's", () => {
+    const m = month();
+    expect(drinkFigures(m, latte).vat).toBeCloseTo(0.25);
+    // Take-away at 11%: 5.00 ÷ 1.11 − 0.70
+    const takeAway = drinkFigures(m, { ...latte, vat: "11" });
+    expect(takeAway.vat).toBeCloseTo(0.11);
+    expect(takeAway.margin).toBeCloseTo(5 / 1.11 - 0.7);
+    expect(takeAway.targetPrice).toBeCloseTo(1.75 * 1.11);
   });
 
   it("swaps in plant milk with its surcharge, only for drinks with the milk", () => {

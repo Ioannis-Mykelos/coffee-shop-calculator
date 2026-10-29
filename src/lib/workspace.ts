@@ -50,7 +50,7 @@ function menu(v: unknown): MenuSettings | undefined {
   if (!isRecord(v) || !Array.isArray(v.drinks)) return undefined;
   const plant = isRecord(v.plantMilk) ? v.plantMilk : {};
   return {
-    drinks: list(v.drinks, (x) => ({ id: id(x.id), name: text(x.name), price: amount(x.price), cups: amount(x.cups), recipe: recipe(x.recipe) })),
+    drinks: list(v.drinks, (x) => ({ id: id(x.id), name: text(x.name), price: amount(x.price), vat: amount(x.vat), cups: amount(x.cups), recipe: recipe(x.recipe) })),
     vat: amount(v.vat),
     target: amount(v.target),
     plantMilk: { milkId: id(plant.milkId), plantId: id(plant.plantId), surcharge: amount(plant.surcharge) },

@@ -46,11 +46,10 @@ export function MenuView({
   const plantReady = plantMilkReady(month)
   const s = menuSummary(month, plant && plantReady)
   const selected = s.drinks.find((d) => d.id === picked) ?? s.drinks[0] ?? null
-  const { vat } = menuRates(month)
 
   const addDrink = () => {
     const id = uid()
-    mutate((m) => void m.menu.drinks.push({ id, name: "", price: "", cups: "", recipe: [] }))
+    mutate((m) => void m.menu.drinks.push({ id, name: "", price: "", vat: "", cups: "", recipe: [] }))
     setPicked(id)
   }
 
@@ -115,7 +114,7 @@ export function MenuView({
           </div>
 
           <div className="flex flex-wrap items-start gap-6">
-            <section aria-label="Drinks, best earners first" className="min-w-0 flex-[999_1_600px] rounded-2xl border bg-card py-2">
+            <section aria-label="Drinks, best earners first" className="min-w-0 flex-[3_1_560px] rounded-2xl border bg-card py-2">
               <div className="overflow-x-auto">
                 <div className="flex min-w-[720px] flex-col">
                   <div className={cn(COLUMNS, "border-b border-line px-5 py-2.5 text-xs font-semibold tracking-[0.04em] text-muted-foreground uppercase")}>
@@ -141,7 +140,7 @@ export function MenuView({
                 </div>
               </div>
               <p className="m-0 px-5 pt-3 pb-2 text-[13px] text-muted-foreground">
-                Prices include VAT ({pct(vat)}); cost and margin don&apos;t. Pick a drink to change its recipe and price.
+                Prices include VAT, at each drink&apos;s rate; cost and margin don&apos;t. Pick a drink to change its recipe and price.
               </p>
             </section>
 
@@ -213,7 +212,10 @@ function DrinkRow({
         {plantNote && <span className="text-xs text-muted-foreground">{plantNote}</span>}
       </span>
       <span className="text-right font-mono">{price(d.cost)}</span>
-      <span className="text-right font-mono">{d.price > 0 ? price(d.price) : "—"}</span>
+      <span className="flex flex-col text-right font-mono">
+        <span>{d.price > 0 ? price(d.price) : "—"}</span>
+        <span className="text-xs text-muted-foreground">VAT {pct(d.vat)}</span>
+      </span>
       <span className={cn("flex flex-col text-right font-mono", d.margin < 0 && "text-destructive")}>
         <span>{d.price > 0 ? price(d.margin) : "—"}</span>
         {d.price > 0 && <span className="text-xs text-muted-foreground">{pct(d.marginPct)}</span>}
@@ -250,7 +252,7 @@ function DrinkEditor({
 }) {
   const drink = month.menu.drinks.find((x) => x.id === d.id)
   if (!drink) return null
-  const { vat, target } = menuRates(month)
+  const { target } = menuRates(month)
   const usable = month.supplies.filter((s) => s.label.trim())
   const set = (fn: (x: Drink) => void) =>
     mutate((m) => {
@@ -260,13 +262,17 @@ function DrinkEditor({
   const diff = d.targetPrice - d.price
 
   return (
-    <aside aria-label={`${d.name}: recipe and price`} className="flex min-w-0 flex-[1_1_340px] flex-col gap-4 rounded-2xl border bg-card p-5">
+    <aside aria-label={`${d.name}: recipe and price`} className="flex min-w-0 flex-[2_1_400px] flex-col gap-4 rounded-2xl border bg-card p-5">
       <Field label="Drink">
         <Input value={drink.name} placeholder="e.g. Cappuccino" maxLength={120} onChange={(e) => set((x) => void (x.name = e.target.value))} />
       </Field>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(112px,1fr))] gap-3">
         <Field label="Menu price, incl. VAT">
           <NumberInput value={drink.price} onChange={(e) => set((x) => void (x.price = e.target.value))} />
+        </Field>
+        {/* Blank: the menu's VAT. Take-away and sit-in can be taxed differently, so each drink can set its own. */}
+        <Field label="VAT (%)">
+          <NumberInput value={drink.vat} placeholder={month.menu.vat || "0"} onChange={(e) => set((x) => void (x.vat = e.target.value))} />
         </Field>
         <Field label="Cups sold a month">
           <NumberInput value={drink.cups} placeholder="About how many?" onChange={(e) => set((x) => void (x.cups = e.target.value))} />
@@ -319,7 +325,7 @@ function DrinkEditor({
 
       <div className="flex flex-col gap-2 rounded-xl border border-line bg-subtle p-3.5 text-sm">
         <Line label={plant ? "Menu price, with plant milk" : "Menu price"} value={d.price > 0 ? price(d.price) : "—"} />
-        <Line label={`VAT (${pct(vat)})`} value={"− " + price(d.price - d.net)} muted />
+        <Line label={`VAT (${pct(d.vat)})`} value={"− " + price(d.price - d.net)} muted />
         <Line label="Cost to make" value={"− " + price(d.cost)} muted />
         <div className={cn("flex justify-between border-t border-line pt-2 font-semibold", d.margin < 0 ? "text-destructive" : "text-good")}>
           <span>{d.margin < 0 ? "You lose" : "You keep"}</span>
@@ -368,7 +374,7 @@ function Line({ label, value, muted }: { label: string; value: string; muted?: b
   )
 }
 
-/** VAT on drinks, the margin suggested prices aim for, and the plant milk option. */
+/** The VAT on drinks without their own, the margin suggested prices aim for, and the plant milk option. */
 function MenuSettingsCard({ month, mutate }: { month: MonthData; mutate: Mutate }) {
   const usable = month.supplies.filter((s) => s.label.trim())
   const { plantMilk } = month.menu
@@ -377,7 +383,7 @@ function MenuSettingsCard({ month, mutate }: { month: MonthData; mutate: Mutate 
     <Card className="gap-4 p-6">
       <CardTitle>Menu settings</CardTitle>
       <div className="flex flex-wrap gap-4">
-        <Field label="VAT on drinks (%)" className="flex-[0_1_160px]">
+        <Field label="Default VAT on drinks (%)" className="flex-[0_1_200px]">
           <NumberInput value={month.menu.vat} onChange={(e) => mutate((m) => void (m.menu.vat = e.target.value))} />
         </Field>
         <Field label="Target margin (%)" className="flex-[0_1_160px]">
