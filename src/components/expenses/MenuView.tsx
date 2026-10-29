@@ -3,12 +3,12 @@
 import { useState } from "react"
 import { Coffee, Croissant, Plus, Trash2 } from "lucide-react"
 
-import { ConsumablePricingCard, ProfitCard } from "@/components/expenses/ProfitCards"
+import { ProfitCard } from "@/components/expenses/ProfitCards"
 import { BreakEvenCard } from "@/components/expenses/Sidebar"
 import { Button } from "@/components/ui/button"
-import { Card, CardTitle, Eyebrow } from "@/components/ui/card"
+import { Card, Eyebrow } from "@/components/ui/card"
 import { Field, Input, NumberInput } from "@/components/ui/input"
-import { type Currency, type Drink, type MonthData, num, uid } from "@/lib/expenses"
+import { type Currency, type Drink, type MonthData, PLANT_MILK, drinkVat, num, uid } from "@/lib/expenses"
 import { type DrinkFigures, menuRates, menuSummary, plantMilkReady } from "@/lib/menu"
 import { cn } from "@/lib/utils"
 
@@ -49,7 +49,11 @@ export function MenuView({
 
   const add = (kind: Drink["kind"]) => {
     const id = uid()
-    mutate((m) => void m.menu.drinks.push({ id, kind, name: "", price: "", vat: "", cups: "", recipe: [] }))
+    // Starts at the rate its kind had by default, written in so the owner sees and can change it.
+    mutate((m) => {
+      const vat = String(Math.round(drinkVat(m, { id, kind, name: "", price: "", vat: "", cups: "", recipe: [] }) * 10000) / 100)
+      m.menu.drinks.push({ id, kind, name: "", price: "", vat, cups: "", recipe: [] })
+    })
     setPicked(id)
   }
 
@@ -147,10 +151,8 @@ export function MenuView({
             <BreakEvenCard month={month} total={total} fmt={fmt} currency={currency} mutate={mutate} />
           </div>
         </div>
-        <ConsumablePricingCard month={month} price={price} mutate={mutate} />
       </section>
 
-      <MenuSettingsCard month={month} mutate={mutate} />
     </div>
   )
 }
@@ -306,6 +308,16 @@ function DrinkEditor({
       if (x) fn(x)
     })
   const diff = d.targetPrice - d.price
+  // The plant milk option, set up from any drink with milk in it: the milk it replaces is that drink's.
+  const { plantMilk } = month.menu
+  const milk = food
+    ? undefined
+    : month.supplies.find((s) => drink.recipe.some((r) => r.supplyId === s.id) && (s.id === plantMilk.milkId || (/milk/i.test(s.label) && !PLANT_MILK.test(s.label))))
+  const setPlant = (k: "plantId" | "surcharge", v: string) =>
+    mutate((m) => {
+      m.menu.plantMilk[k] = v
+      if (milk) m.menu.plantMilk.milkId = milk.id
+    })
 
   return (
     <aside aria-label={`${d.name}: recipe and price`} className="flex min-w-0 flex-[2_1_400px] flex-col gap-4 rounded-2xl border bg-card p-5">
@@ -426,21 +438,54 @@ function DrinkEditor({
         </div>
       </div>
 
-      {d.targetPrice > 0 && (
-        <div className="flex flex-col gap-1 rounded-xl bg-brand-soft p-3.5 text-brand-ink">
-          <span className="text-sm font-semibold">
-            For a {pct(target)} margin, charge {price(d.targetPrice)}
-          </span>
-          <span className="text-[13px]">
-            {Math.abs(diff) < 0.05
-              ? "Your price is right on target."
-              : diff > 0
-                ? `${price(diff)} more than today.`
-                : `You already charge ${price(-diff)} more than that.`}
-          </span>
+      {milk && (
+        <div className="flex flex-col gap-2 rounded-xl border border-line p-3.5">
+          <Eyebrow>Plant milk option</Eyebrow>
+          <p className="m-0 text-[13px] text-muted-foreground">For every drink with {milk.label.trim()}: pick the plant milk that replaces it and what you charge extra.</p>
+          <div className="flex flex-wrap gap-3">
+            <Field label="Plant milk" className="flex-[1_1_160px]">
+              <select
+                value={month.supplies.some((s) => s.id === plantMilk.plantId) ? plantMilk.plantId : ""}
+                onChange={(e) => setPlant("plantId", e.target.value)}
+                className={selectClass}
+              >
+                <option value="">None</option>
+                {month.supplies
+                  .filter((s) => s.label.trim() && s.id !== milk.id)
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+              </select>
+            </Field>
+            <Field label="Extra charge, incl. VAT" className="flex-[0_1_150px]">
+              <NumberInput value={plantMilk.surcharge} onChange={(e) => setPlant("surcharge", e.target.value)} />
+            </Field>
+          </div>
         </div>
       )}
 
+      {d.cost > 0 && (
+        <div className="flex flex-wrap items-end justify-between gap-3 rounded-xl bg-brand-soft p-3.5 text-brand-ink">
+          <div className="flex min-w-0 flex-[1_1_200px] flex-col gap-1">
+            <span className="text-sm font-semibold">
+              For a {pct(target)} margin, charge {price(d.targetPrice)}
+            </span>
+            <span className="text-[13px]">
+              {Math.abs(diff) < 0.05
+                ? "Your price is right on target."
+                : diff > 0
+                  ? `${price(diff)} more than today.`
+                  : `You already charge ${price(-diff)} more than that.`}
+            </span>
+          </div>
+          {/* One target for the whole menu */}
+          <Field label="Target margin, all items (%)" className="flex-[0_0_150px] text-brand-ink">
+            <NumberInput value={month.menu.target} onChange={(e) => mutate((m) => void (m.menu.target = e.target.value))} />
+          </Field>
+        </div>
+      )}
     </aside>
   )
 }
@@ -451,59 +496,5 @@ function Line({ label, value, muted }: { label: string; value: string; muted?: b
       <span>{label}</span>
       <span className="font-mono">{value}</span>
     </div>
-  )
-}
-
-/** The VAT on drinks and food without their own, the margin suggested prices aim for, and the plant milk option. */
-function MenuSettingsCard({ month, mutate }: { month: MonthData; mutate: Mutate }) {
-  const usable = month.supplies.filter((s) => s.label.trim())
-  const { plantMilk } = month.menu
-  const setPlant = (k: keyof typeof plantMilk, v: string) => mutate((m) => void (m.menu.plantMilk[k] = v))
-  return (
-    <Card className="gap-4 p-6">
-      <CardTitle>Menu settings</CardTitle>
-      <div className="flex flex-wrap gap-4">
-        <Field label="Default VAT on drinks (%)" className="flex-[0_1_200px]">
-          <NumberInput value={month.menu.vat} onChange={(e) => mutate((m) => void (m.menu.vat = e.target.value))} />
-        </Field>
-        <Field label="Default VAT on food (%)" className="flex-[0_1_200px]">
-          <NumberInput
-            value={month.menu.foodVat}
-            placeholder={month.menu.vat || "0"}
-            onChange={(e) => mutate((m) => void (m.menu.foodVat = e.target.value))}
-          />
-        </Field>
-        <Field label="Target margin (%)" className="flex-[0_1_160px]">
-          <NumberInput value={month.menu.target} onChange={(e) => mutate((m) => void (m.menu.target = e.target.value))} />
-        </Field>
-      </div>
-      <div className="flex flex-col gap-2">
-        <Eyebrow>Plant milk option</Eyebrow>
-        <p className="m-0 text-sm text-muted-foreground">
-          Pick the milk it replaces and the plant milk from your Supplies to compare prices with it, extra charge included.
-        </p>
-        <div className="flex flex-wrap gap-4">
-          {(["milkId", "plantId"] as const).map((k) => (
-            <Field key={k} label={k === "milkId" ? "Replaces" : "Plant milk"} className="flex-[1_1_180px]">
-              <select
-                value={usable.some((s) => s.id === plantMilk[k]) ? plantMilk[k] : ""}
-                onChange={(e) => setPlant(k, e.target.value)}
-                className={selectClass}
-              >
-                <option value="">None</option>
-                {usable.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          ))}
-          <Field label="Extra charge, incl. VAT" className="flex-[0_1_160px]">
-            <NumberInput value={plantMilk.surcharge} onChange={(e) => setPlant("surcharge", e.target.value)} />
-          </Field>
-        </div>
-      </div>
-    </Card>
   )
 }

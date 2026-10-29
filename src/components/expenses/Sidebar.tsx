@@ -71,14 +71,22 @@ export function BreakdownCard({ totals, fmt }: { totals: Totals; fmt: Fmt }) {
 
 const pctLabel = (v: number) => (v * 100).toFixed(1).replace(/\.0$/, "").replace(".", ",") + "%"
 
+/**
+ * How many customers a day cover the month's costs: each buys the average drinks and food items, at the menu's average
+ * prices, with each item's VAT taken out. Food per customer is worked out from what the menu sells unless typed in.
+ */
 export function BreakEvenCard({ month, total, fmt, currency, mutate }: { month: MonthData; total: number; fmt: Fmt; currency: Currency; mutate: (fn: (m: MonthData) => void) => void }) {
   const be = breakEven(month, total)
   const price = priceFormatter(currency)
-  const symbol = price(0).replace(/[\d\s.,\u00a0]/g, "") || currency
+  const amount = (n: number) => n.toLocaleString("en-GB", { maximumFractionDigits: 2 })
+  const set = (k: "coffeesPerCustomer" | "foodPerCustomer") => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value
+    mutate((m) => void (m[k] = v))
+  }
   return (
     <Card>
       <CardTitle>Break-even check</CardTitle>
-      <div className="grid grid-cols-[96px_minmax(0,1fr)] items-end gap-3">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(96px,1fr))] items-end gap-3">
         <Field label="Opening days">
           <NumberInput
             inputMode="numeric"
@@ -91,52 +99,59 @@ export function BreakEvenCard({ month, total, fmt, currency, mutate }: { month: 
             }}
           />
         </Field>
-        <Field label="Avg. drinks per customer">
-          <NumberInput
-            value={month.coffeesPerCustomer}
-            onChange={(e) => {
-              const v = e.target.value
-              mutate((m) => void (m.coffeesPerCustomer = v))
-            }}
-          />
+        <Field label="Drinks per customer">
+          <NumberInput value={month.coffeesPerCustomer} onChange={set("coffeesPerCustomer")} />
+        </Field>
+        <Field label="Food per customer">
+          <NumberInput value={month.foodPerCustomer} placeholder={amount(be.foodItems)} onChange={set("foodPerCustomer")} />
         </Field>
       </div>
-      <div className="flex justify-between gap-3 text-sm">
-        <span>
-          Drinks per customer
-          <span className="block text-[13px] text-muted-foreground">
-            {be.coffees.toLocaleString("en-GB")} × {price(be.cupPrice)} (your menu&apos;s average drink, incl. VAT)
-          </span>
-        </span>
-        <strong className="font-mono font-medium">{price(be.coffeeSpend)}</strong>
-      </div>
+      {be.foodFromMenu && be.foodSold > 0 && (
+        <p className="m-0 text-[13px] text-muted-foreground">
+          Food per customer is worked out from your menu: {be.foodSold.toLocaleString("en-GB")} food items sold for{" "}
+          {be.drinksSold.toLocaleString("en-GB")} drinks. Type a number to use your own.
+        </p>
+      )}
 
-      <div className="flex flex-col gap-2 rounded-xl border border-line bg-subtle p-3">
-        <div className="text-sm font-semibold">Other consumables</div>
-        <Field label={`Juice, pastries etc. per customer, incl. VAT (${symbol})`}>
-          <NumberInput
-            value={month.extrasPerCustomer}
-            onChange={(e) => {
-              const v = e.target.value
-              mutate((m) => void (m.extrasPerCustomer = v))
-            }}
-          />
-        </Field>
-        <span className="text-[13px] text-muted-foreground">VAT {pctLabel(be.extrasVat)}, set under Consumables pricing.</span>
+      <div className="flex flex-col gap-2 rounded-xl border border-line bg-subtle p-3 text-sm">
+        <div className="flex justify-between gap-3">
+          <span>
+            Drinks
+            <span className="block text-[13px] text-muted-foreground">
+              {amount(be.coffees)} × {price(be.cupPrice)}, your average drink · VAT {pctLabel(be.vat)}
+            </span>
+          </span>
+          <strong className="font-mono font-medium">{price(be.coffeeSpend)}</strong>
+        </div>
+        <div className="flex justify-between gap-3">
+          <span>
+            Food
+            <span className="block text-[13px] text-muted-foreground">
+              {be.foodPrice > 0
+                ? `${amount(be.foodItems)} × ${price(be.foodPrice)}, your average food item · VAT ${pctLabel(be.extrasVat)}`
+                : "Add food to your menu to count it here"}
+            </span>
+          </span>
+          <strong className="font-mono font-medium">{price(be.extras)}</strong>
+        </div>
+        <div className="flex justify-between gap-3 border-t border-line pt-2 font-semibold">
+          <span>Average sale per customer, incl. VAT</span>
+          <strong className="font-mono font-medium">{price(be.avgGross)}</strong>
+        </div>
+        <div className="flex justify-between gap-3 text-muted-foreground">
+          <span>Without VAT</span>
+          <span className="font-mono">{price(be.avg)}</span>
+        </div>
       </div>
 
       <div className="flex flex-col gap-1.5 text-sm">
         <div className="flex justify-between">
-          <span>Avg. sale per customer, incl. VAT</span>
-          <strong className="font-mono font-medium">{price(be.avgGross)}</strong>
-        </div>
-        <div className="flex justify-between">
-          <span>Other consumables per customer</span>
-          <strong className="font-mono font-medium">{price(be.extras)}</strong>
-        </div>
-        <div className="flex justify-between">
-          <span>Cost per opening day</span>
+          <span>Costs per opening day</span>
           <strong className="font-mono font-medium">{fmt(be.perDay)}</strong>
+        </div>
+        <div className="flex justify-between">
+          <span>Till target per opening day, incl. VAT</span>
+          <strong className="font-mono font-medium">{be.tillPerDay > 0 ? fmt(be.tillPerDay) : "—"}</strong>
         </div>
         <div className="flex justify-between">
           <span>Customers needed this month</span>

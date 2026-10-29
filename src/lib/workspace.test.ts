@@ -34,7 +34,7 @@ describe("cleanWorkspace", () => {
     m.takings = { "1": "1200", "31": "800", "0": "5", "32": "5", x: "5", "2": "", "3": 7 as unknown as string };
     const clean = cleanWorkspace(JSON.parse(JSON.stringify(w)))!.data["2026-10"];
     expect(clean.takings).toEqual({ "1": "1200", "31": "800" });
-    expect(clean.menu.drinks.map((d) => d.kind)).toEqual(["drink", "drink", "drink", "drink", "food"]);
+    expect(clean.menu.drinks.map((d) => d.kind)).toEqual(["drink", "drink", "drink", "drink", "drink", "food", "food"]);
   });
 
   it("bounds what one save can hold", () => {

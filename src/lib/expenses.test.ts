@@ -3,7 +3,6 @@ import {
   averageDrink,
   breakEven,
   computeTotals,
-  consumablePrices,
   cupCost,
   drinkVat,
   type MonthData,
@@ -97,7 +96,7 @@ describe("totals", () => {
   });
 });
 
-describe("cup and consumable prices", () => {
+describe("the old cup price", () => {
   const supplies = [
     { id: "beans", label: "Coffee beans", qty: "40", unit: "kg", price: "22" },
     { id: "cups", label: "To-go cups", qty: "3000", unit: "pcs", price: "0.11" },
@@ -127,35 +126,23 @@ describe("cup and consumable prices", () => {
     expect(c.ingredients).toBe(0);
   });
 
-  it("prices each named consumable", () => {
-    const p = consumablePrices(
-      month({
-        consumables: [
-          { id: "j", label: "Juice", qty: "1", unit: "bottle", price: "2" },
-          { id: "n", label: " ", qty: "1", unit: "", price: "9" },
-        ],
-        consumablePricing: { margin: "50", vat: "10" },
-      }),
-    );
-    expect(p.items).toHaveLength(1);
-    expect(p.items[0]).toMatchObject({ cost: 2, price: 3 });
-    expect(p.items[0].priceInclVat).toBeCloseTo(3.3);
-  });
 });
 
 describe("break-even and profit", () => {
-  const m = month({
+  const plain = month({
     days: "25",
     coffeesPerCustomer: "2",
-    extrasPerCustomer: "1.1",
+    foodPerCustomer: "1",
     supplies: [{ id: "cups", label: "Cups", qty: "1", unit: "pcs", price: "1" }],
     cup: { recipe: [{ id: "r", supplyId: "cups", qty: "1" }], margin: "100", vat: "25" },
-    consumablePricing: { margin: "0", vat: "10" },
   });
+  /** The old cup's month, plus a snack at 1.10 with 10% VAT */
+  const snack = { ...plain.menu.drinks[0], id: "s", kind: "food" as const, name: "Snack", price: "1.10", vat: "10" };
+  const m = { ...plain, menu: { ...plain.menu, drinks: [...plain.menu.drinks, snack] } };
 
   it("prices drinks from the menu: the old cup recipe's month gets the same answer", () => {
     // No menu saved: the month's menu is one drink at the old cup price, 2.50, with its 25% VAT.
-    expect(m.menu.drinks.map((d) => d.price)).toEqual(["2.50"]);
+    expect(plain.menu.drinks.map((d) => d.price)).toEqual(["2.50"]);
     expect(breakEven(m, 10_000).cupPrice).toBeCloseTo(2.5);
     // With cups sold, the average is weighted by them; without, it's the plain average.
     const two = (cups: [string, string]) =>
@@ -168,21 +155,38 @@ describe("break-even and profit", () => {
     const drinks = [
       { ...m.menu.drinks[0], price: "2.22", vat: "11", cups: "100" }, // 2.00 without VAT
       { ...m.menu.drinks[0], id: "b", price: "2.50", vat: "", cups: "100" }, // the menu's 25%: 2.00
+      snack,
     ];
     const mixed = { ...m, menu: { ...m.menu, drinks } };
     expect(averageDrink(mixed)).toEqual({ price: expect.closeTo(2.36), net: expect.closeTo(2) });
     const be = breakEven(mixed, 10_000);
-    // Two drinks at 2.00 without VAT, and 1.10 of extras incl. 10% VAT: 5.00 a customer, as for the single cup.
+    // Two drinks at 2.00 without VAT, and a 1.10 snack incl. 10% VAT: 5.00 a customer, as for the single cup.
     expect(be.avg).toBeCloseTo(5);
     expect(be.vat).toBeCloseTo(0.18);
     expect(be.customersDay).toBe(80);
   });
 
-  it("leaves food out of the average drink: it's in the extras per customer", () => {
-    const croissant = { ...m.menu.drinks[0], id: "f", kind: "food" as const, price: "9.00", cups: "500" };
+  it("averages drinks and food apart", () => {
+    const croissant = { ...snack, id: "f", price: "9.00" };
     const withFood = { ...m, menu: { ...m.menu, drinks: [...m.menu.drinks, croissant] } };
     expect(averageDrink(withFood).price).toBeCloseTo(2.5);
-    expect(breakEven(withFood, 10_000).customersDay).toBe(80);
+    expect(averageDrink(withFood, "food").price).toBeCloseTo((1.1 + 9) / 2);
+  });
+
+  it("works out food per customer from what the menu sells, unless typed in", () => {
+    const sold = (drinkCups: string, foodCups: string) => ({
+      ...m,
+      foodPerCustomer: "",
+      menu: { ...m.menu, drinks: [{ ...m.menu.drinks[0], cups: drinkCups }, { ...snack, cups: foodCups }] },
+    });
+    // 300 snacks for 1,200 drinks: one for every four drinks, so half a snack for a customer's two drinks
+    const be = breakEven(sold("1200", "300"), 10_000);
+    expect(be).toMatchObject({ foodFromMenu: true, drinksSold: 1200, foodSold: 300 });
+    expect(be.foodItems).toBeCloseTo(0.5);
+    expect(be.extras).toBeCloseTo(0.55);
+    expect(be.avg).toBeCloseTo(4 + 0.5);
+    expect(breakEven(sold("", ""), 10_000).foodItems).toBe(0);
+    expect(breakEven({ ...sold("1200", "300"), foodPerCustomer: "1" }, 10_000)).toMatchObject({ foodFromMenu: false, foodItems: 1 });
   });
 
   it("gives food the menu's food VAT, else the drinks'", () => {
@@ -195,12 +199,15 @@ describe("break-even and profit", () => {
 
   it("takes VAT out of each part of the sale at its own rate", () => {
     const be = breakEven(m, 10_000);
-    // Two coffees at 2.50 incl. VAT, and 1.10 of extras incl. 10% VAT.
+    // Two coffees at 2.50 incl. VAT, and a 1.10 snack incl. 10% VAT.
     expect(be.avgGross).toBeCloseTo(6.1);
     expect(be.avg).toBeCloseTo(4 + 1);
+    expect(be.extrasVat).toBeCloseTo(0.1);
     expect(be.customersMonth).toBe(2000);
     expect(be.customersDay).toBe(80);
     expect(be.perDay).toBe(400);
+    // 400 a day of costs, with VAT on top at the sale's mix: 400 × 6.10 ÷ 5.00
+    expect(be.tillPerDay).toBeCloseTo(488);
   });
 
   it("has no profit until sales are entered", () => {
