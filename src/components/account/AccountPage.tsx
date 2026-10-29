@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import {
   type AccountSettings,
   changeMyPassword,
+  continueWithGoogle,
   deleteMyAccount,
   disableTwoStep,
   enableTwoStep,
@@ -26,7 +27,8 @@ type Notify = (text: string, tone?: "good" | "bad") => void
 
 /**
  * Account & security: the profile, the password, two-step login and deleting the account. Each change asks for the
- * current password again (lib/server/accounts.ts). An account made with Google gets a link to set a password first.
+ * current password again (lib/server/accounts.ts). An account made with Google gets a link to set a password first,
+ * when the site sends emails, and deletes itself after a fresh Google log in.
  */
 export function AccountPage() {
   const [settings, setSettings] = useState<AccountSettings | null>(null)
@@ -53,7 +55,7 @@ export function AccountPage() {
         <section className="flex flex-col items-start gap-3 rounded-2xl border bg-card p-7">
           <CircleCheck aria-hidden="true" className="size-8 text-good" />
           <h1 className="m-0 font-display text-2xl font-semibold">Your account is deleted</h1>
-          <p className="m-0 text-muted-foreground">Your account and all its figures are gone, and you&apos;ve been logged out. We&apos;ve emailed you to confirm.</p>
+          <p className="m-0 text-muted-foreground">Your account and all its figures are gone, and you&apos;ve been logged out.{settings?.emailLogin && " We've emailed you to confirm."}</p>
           <Button asChild>
             <Link href="/">Back to Crema</Link>
           </Button>
@@ -85,8 +87,13 @@ export function AccountPage() {
       ) : (
         <>
           <ProfileCard settings={settings} />
-          <PasswordCard settings={settings} notify={notify} />
-          <TwoStepCard settings={settings} notify={notify} onChange={(patch) => setSettings({ ...settings, ...patch })} />
+          {/* A Google account on a Google-only site has no password to change, and can't be emailed a link to set one. */}
+          {(settings.hasPassword || settings.emailLogin) && (
+            <>
+              <PasswordCard settings={settings} notify={notify} />
+              <TwoStepCard settings={settings} notify={notify} onChange={(patch) => setSettings({ ...settings, ...patch })} />
+            </>
+          )}
           <DeleteCard settings={settings} onDeleted={() => setDeleted(true)} />
         </>
       )}
@@ -487,6 +494,7 @@ function TwoStepCard({ settings, notify, onChange }: { settings: AccountSettings
 function DeleteCard({ settings, onDeleted }: { settings: AccountSettings; onDeleted: () => void }) {
   const [confirming, setConfirming] = useState(false)
   const [password, setPassword] = useState("")
+  const [loginAgain, setLoginAgain] = useState(false)
   const { busy, error, run } = useSubmit()
 
   return (
@@ -494,32 +502,46 @@ function DeleteCard({ settings, onDeleted }: { settings: AccountSettings; onDele
       <p className={muted}>
         Deletes your account and every figure in it, for good. Export the months you want to keep first (Export month, in the calculator).
       </p>
-      {!settings.hasPassword ? (
-        <SetPasswordFirst email={settings.email} why="Set one to delete your account here." />
-      ) : confirming ? (
+      {confirming ? (
         <form
           aria-label="Confirm deleting your account"
           className="flex max-w-[420px] flex-col gap-3.5 rounded-xl border border-destructive/30 bg-[#FBEDEF]/60 p-4"
           onSubmit={(e) =>
             run(e, async () => {
-              const res = await deleteMyAccount(password)
+              const res = await deleteMyAccount(settings.hasPassword ? password : undefined)
               if (res.result === undefined) return res.message
               if (res.result === "wrong-password") return WRONG_PASSWORD
-              if (res.result === "no-password") return "Set a password first."
+              if (res.result === "login-again") {
+                setLoginAgain(true)
+                return "To keep your account safe, log in with Google again first, then delete it within 10 minutes."
+              }
               await logOut()
               onDeleted()
               return null
             })
           }
         >
-          <p className="m-0 text-sm font-medium text-destructive">This can&apos;t be undone. Enter your password to delete your account.</p>
-          <input type="hidden" autoComplete="username" value={settings.email} />
-          <AuthInput label="Your password" type="password" autoComplete="current-password" value={password} onChange={setPassword} />
+          {settings.hasPassword ? (
+            <>
+              <p className="m-0 text-sm font-medium text-destructive">This can&apos;t be undone. Enter your password to delete your account.</p>
+              <input type="hidden" autoComplete="username" value={settings.email} />
+              <AuthInput label="Your password" type="password" autoComplete="current-password" value={password} onChange={setPassword} />
+            </>
+          ) : (
+            <p className="m-0 text-sm font-medium text-destructive">This can&apos;t be undone.</p>
+          )}
           <FormError error={error} />
           <div className="flex flex-wrap gap-2.5">
-            <Button type="submit" className="bg-destructive hover:bg-destructive/90" disabled={busy || !password}>
-              Delete my account for good
-            </Button>
+            {/* An account made with Google proves it's the owner with a fresh Google log in, then comes back here. */}
+            {loginAgain ? (
+              <Button disabled={busy} onClick={() => void continueWithGoogle("/app/account")}>
+                Log in with Google again
+              </Button>
+            ) : (
+              <Button type="submit" className="bg-destructive hover:bg-destructive/90" disabled={busy || (settings.hasPassword && !password)}>
+                Delete my account for good
+              </Button>
+            )}
             <Button variant="outline" disabled={busy} onClick={() => setConfirming(false)}>
               Cancel
             </Button>

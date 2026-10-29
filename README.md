@@ -87,7 +87,7 @@ Open **http://localhost:3000**.
 | | Local mode (default) | Accounts mode |
 | --- | --- | --- |
 | When | `MONGODB_URI` or `AUTH_SECRET` is blank | Both are set |
-| Log in | None: `/app` opens straight away, `/login` redirects to it | Google and email + password, two-step login |
+| Log in | None: `/app` opens straight away, `/login` redirects to it | Google, plus email + password with two-step login once emails can be sent |
 | Figures | In this browser (`localStorage`) | In the owner's account, on every device |
 
 Local mode means a fresh clone and CI work without any setup.
@@ -97,7 +97,7 @@ Local mode means a fresh clone and CI work without any setup.
 1. **MongoDB**: create a free Atlas cluster and a database user. Put the connection string in `MONGODB_URI`, ending with the database name (`…mongodb.net/crema`). Under Network Access, allow your IP address (and `0.0.0.0/0` for Netlify, whose functions have no fixed IPs).
 2. **AUTH_SECRET**: `npx auth secret`. Keep it stable: it also encrypts two-step login secrets.
 3. **Google** (optional): create an OAuth client in Google Cloud Console with the redirect URI `http://localhost:3000/api/auth/callback/google` (and your site's URL). Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Without them, the Google button isn't shown.
-4. **Email** (optional locally): without `EMAIL_SERVER_HOST`, development prints the account emails (confirmation and reset links) to the `npm run dev` terminal. Production needs SMTP.
+4. **Email** (optional): email + password log in needs emails (confirmation and reset links), so it's offered only when `EMAIL_SERVER_HOST` is set. Without it the site is Google-only, and a Google account deletes itself after a fresh Google log in instead of a password. With neither Google nor SMTP set, email log in stays on and development prints the emails to the `npm run dev` terminal.
 5. Run `npm run db:migrate` once to create the indexes.
 
 ## Scripts
@@ -224,7 +224,7 @@ The full account flow (sign up, confirm the email, log in, save and reload figur
 `netlify.toml` sets the build command (migrations, then `next build`), Node 22 and the Next.js runtime.
 
 1. Import the repository in Netlify (**Add new site → Import an existing project**).
-2. Under **Site configuration → Environment variables**, add `MONGODB_URI`, `AUTH_SECRET`, `EMAIL_SERVER_HOST`, `EMAIL_SERVER_PORT`, `EMAIL_SERVER_USER`, `EMAIL_SERVER_PASSWORD` and `EMAIL_FROM`, plus `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` for Google sign-in. Netlify provides the site's URL for email links; set `APP_URL` only for a custom domain before it's primary.
+2. Under **Site configuration → Environment variables**, add `MONGODB_URI`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Add `EMAIL_SERVER_HOST`, `EMAIL_SERVER_PORT`, `EMAIL_SERVER_USER`, `EMAIL_SERVER_PASSWORD` and `EMAIL_FROM` to offer email + password log in too. Netlify provides the site's URL for email links; set `APP_URL` only for a custom domain before it's primary.
 3. In Google Cloud Console, add `https://<your-site>/api/auth/callback/google` as an authorized redirect URI.
 4. Deploy. The production build log shows `Migrating: …` the first time, then `the database is up to date`.
 

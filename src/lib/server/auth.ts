@@ -4,7 +4,7 @@ import NextAuth, { CredentialsSignin, type NextAuthConfig } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import Google from 'next-auth/providers/google';
 import { checkPassword, checkSecondFactor, claimForVerifiedEmail, needsSecondFactor, normalizeEmail } from './accounts';
-import { googleEnabled } from './config';
+import { emailLoginEnabled, googleEnabled } from './config';
 import { mongoClient, mongoUserStore } from './db';
 import { log } from './log';
 import { sendMail } from './mailer';
@@ -41,6 +41,32 @@ const SESSION_DAYS = 30;
 /** Without "Keep me logged in" a session ends after this long, even if the browser stays open. */
 const SHORT_SESSION_MS = 12 * 60 * 60 * 1000;
 
+/** Email + password, with the authenticator app's code as a second step when two-step login is on. */
+const credentials = Credentials({
+  credentials: { email: {}, password: {}, remember: {}, code: {} },
+  async authorize(input, request) {
+    const email = normalizeEmail(String(input.email ?? ''));
+    const [byIp, byEmail] = await Promise.all([
+      allow(`login-ip:${clientIp(request.headers)}`, LOGIN_LIMIT.ip, LOGIN_WINDOW_MS),
+      allow(`login-email:${email}`, LOGIN_LIMIT.email, LOGIN_WINDOW_MS),
+    ]);
+    if (!byIp || !byEmail) throw new TooManyAttempts();
+    const result = await checkPassword({ store: mongoUserStore }, email, String(input.password ?? ''));
+    if (!result.ok) {
+      if (result.reason === 'unverified') throw new UnverifiedEmail();
+      return null;
+    }
+    // Two-step login: the code comes in a second try, with the same email and password.
+    if (needsSecondFactor(result.user)) {
+      const code = String(input.code ?? '').trim();
+      if (!code) throw new TwoFactorRequired();
+      if (!(await checkSecondFactor({ store: mongoUserStore, sendMail }, result.user, code))) throw new TwoFactorInvalid();
+    }
+    const { id, firstName, lastName } = result.user;
+    return { id, email: result.user.email, firstName, lastName, name: `${firstName} ${lastName}`, remember: input.remember !== 'false' };
+  },
+});
+
 const config = (): NextAuthConfig => ({
   adapter: MongoDBAdapter(mongoClient),
   session: { strategy: 'jwt', maxAge: SESSION_DAYS * 24 * 60 * 60 },
@@ -54,30 +80,7 @@ const config = (): NextAuthConfig => ({
     },
   },
   providers: [
-    Credentials({
-      credentials: { email: {}, password: {}, remember: {}, code: {} },
-      async authorize(input, request) {
-        const email = normalizeEmail(String(input.email ?? ''));
-        const [byIp, byEmail] = await Promise.all([
-          allow(`login-ip:${clientIp(request.headers)}`, LOGIN_LIMIT.ip, LOGIN_WINDOW_MS),
-          allow(`login-email:${email}`, LOGIN_LIMIT.email, LOGIN_WINDOW_MS),
-        ]);
-        if (!byIp || !byEmail) throw new TooManyAttempts();
-        const result = await checkPassword({ store: mongoUserStore }, email, String(input.password ?? ''));
-        if (!result.ok) {
-          if (result.reason === 'unverified') throw new UnverifiedEmail();
-          return null;
-        }
-        // Two-step login: the code comes in a second try, with the same email and password.
-        if (needsSecondFactor(result.user)) {
-          const code = String(input.code ?? '').trim();
-          if (!code) throw new TwoFactorRequired();
-          if (!(await checkSecondFactor({ store: mongoUserStore, sendMail }, result.user, code))) throw new TwoFactorInvalid();
-        }
-        const { id, firstName, lastName } = result.user;
-        return { id, email: result.user.email, firstName, lastName, name: `${firstName} ${lastName}`, remember: input.remember !== 'false' };
-      },
-    }),
+    ...(emailLoginEnabled() ? [credentials] : []),
     ...(googleEnabled()
       ? [
           Google({

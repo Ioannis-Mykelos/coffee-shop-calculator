@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { CircleAlert, CircleCheck, MailCheck } from "lucide-react";
 import { AuthMessage, authPrimary } from "@/components/auth/AuthShell";
 import { verifyEmail, type VerifyResult } from "@/lib/server/accounts";
-import { authMode } from "@/lib/server/config";
+import { authMode, emailLoginEnabled } from "@/lib/server/config";
 import { mongoUserStore } from "@/lib/server/db";
 
 // Accounts or local mode is read when the page is requested, never fixed at build time.
@@ -36,7 +36,7 @@ const RESULTS: Record<VerifyResult, { ok: boolean; title: string; text: string }
 };
 
 export default async function VerifyEmailPage({ searchParams }: Props) {
-  if (authMode() !== "accounts") notFound();
+  if (authMode() !== "accounts" || !emailLoginEnabled()) notFound();
   const { token, result } = await searchParams;
 
   if (result && result in RESULTS) {

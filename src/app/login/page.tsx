@@ -4,7 +4,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { LoginPanel } from "@/components/auth/LoginPanel";
 import { safeNext } from "@/lib/next-path";
 import { auth } from "@/lib/server/auth";
-import { authMode, googleEnabled } from "@/lib/server/config";
+import { authMode, emailLoginEnabled, googleEnabled } from "@/lib/server/config";
 
 // Accounts or local mode is read when the page is requested, never fixed at build time.
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ export default async function LoginPage({ searchParams }: Props) {
   if ((await auth())?.user?.id) redirect(to);
   return (
     <AuthShell>
-      <LoginPanel initialMode={mode === "join" ? "join" : "login"} google={googleEnabled()} next={to} />
+      <LoginPanel initialMode={mode === "join" ? "join" : "login"} google={googleEnabled()} email={emailLoginEnabled()} next={to} />
     </AuthShell>
   );
 }

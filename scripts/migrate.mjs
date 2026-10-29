@@ -49,6 +49,11 @@ async function main() {
   if (process.argv.includes('--netlify') && process.env.CONTEXT !== 'production') {
     return console.log(`Migrations skipped: a ${process.env.CONTEXT ?? 'local'} build doesn't change the production database.`);
   }
+  // Local mode on the live site hides /login and the Log in link, so a forgotten variable must show in the build log.
+  if (process.argv.includes('--netlify') && !(process.env.MONGODB_URI && process.env.AUTH_SECRET)) {
+    const missing = ['MONGODB_URI', 'AUTH_SECRET'].filter((name) => !process.env[name]).join(' and ');
+    console.warn(`WARNING: ${missing} not set, so the site runs in local mode: no accounts, and /login redirects to /app.`);
+  }
   const uri = process.env.MONGODB_URI;
   if (!uri) return console.log('Migrations skipped: MONGODB_URI is not set (local mode).');
 
