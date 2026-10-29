@@ -30,15 +30,17 @@ function Harness({ view, start = sampleMonth() }: { view: "menu" | "takings" | "
   );
 }
 
-const rows = () => within(screen.getByRole("region", { name: "Menu, best earners first" })).getAllByRole("button");
+const rows = (part: "Drinks" | "Food" = "Drinks") =>
+  within(screen.getByRole("region", { name: `${part}, best earners first` })).queryAllByRole("button").filter((b) => b.hasAttribute("aria-pressed"));
 const kept = (editor: HTMLElement) => within(editor).getByText(/You keep/).parentElement?.textContent;
 
 describe("MenuView", () => {
   it("ranks the drinks by what they earn a month, and names the thinnest margin", () => {
     render(<Harness view="menu" />);
     // Sample café: cappuccino 1,100 cups × 2.13 kept, latte 800 × 2.24, espresso 700 × 1.68, croissant 500 × 2.00, flat white 400 × 2.33
-    const names = ["Cappuccino", "Caffè latte", "Espresso", "Croissant", "Flat white"];
+    const names = ["Cappuccino", "Caffè latte", "Espresso", "Flat white"];
     expect(rows().map((r) => names.find((n) => r.textContent?.startsWith(n)))).toEqual(names);
+    expect(rows("Food").map((r) => r.textContent?.startsWith("Croissant"))).toEqual([true]);
     expect(screen.getByText("Thinnest margin per sale").parentElement?.textContent).toContain("Espresso");
   });
 
@@ -76,7 +78,7 @@ describe("MenuView", () => {
     const user = userEvent.setup();
     render(<Harness view="menu" />);
     await user.click(screen.getByRole("button", { name: "Add a drink" }));
-    expect(rows()).toHaveLength(6);
+    expect(rows()).toHaveLength(5);
     const editor = screen.getByRole("complementary", { name: /Untitled drink/ });
     await user.type(within(editor).getByLabelText("Drink"), "Mocha");
     screen.getByRole("complementary", { name: /Mocha/ });
@@ -110,12 +112,32 @@ describe("MenuView", () => {
     await user.click(within(editor).getByRole("button", { name: "+ Add ingredient" }));
     editor = screen.getByRole("complementary", { name: /Muffin/ });
     const pick = within(editor).getByLabelText("Ingredient") as HTMLSelectElement;
-    expect([...pick.querySelectorAll("optgroup")].map((g) => g.label)).toEqual(["Supplies", "Consumables"]);
+    // Food is made from Consumables only: no beans, milk or cups to pick from
+    expect([...pick.querySelectorAll("optgroup")].map((g) => g.label)).toEqual(["Consumables"]);
     await user.selectOptions(pick, within(pick).getByRole("option", { name: "Pastries" }));
     await user.type(within(screen.getByRole("complementary", { name: /Muffin/ })).getByLabelText(/^Amount/), "1");
     // 2.24 ÷ 1.12 − 0.80
     expect(kept(screen.getByRole("complementary", { name: /Muffin/ }))).toContain(price(1.2));
-    expect(rows().find((r) => r.textContent?.startsWith("Muffin"))?.textContent).toContain("Food");
+    expect(rows("Food").some((r) => r.textContent?.startsWith("Muffin"))).toBe(true);
+  });
+
+  it("moves an item added on the wrong list, and removes one", async () => {
+    const user = userEvent.setup();
+    render(<Harness view="menu" />);
+    await user.click(screen.getByRole("button", { name: "Add food" }));
+    let editor = screen.getByRole("complementary", { name: /Untitled food/ });
+    await user.type(within(editor).getByLabelText("Food"), "Orange juice");
+    editor = screen.getByRole("complementary", { name: /Orange juice/ });
+    await user.click(within(editor).getByRole("button", { name: "Drink" }));
+    expect(rows().some((r) => r.textContent?.startsWith("Orange juice"))).toBe(true);
+    expect(rows("Food").some((r) => r.textContent?.startsWith("Orange juice"))).toBe(false);
+    // As a drink, its ingredients can come from Supplies too
+    await user.click(within(screen.getByRole("complementary", { name: /Orange juice/ })).getByRole("button", { name: "+ Add ingredient" }));
+    const pick = within(screen.getByRole("complementary", { name: /Orange juice/ })).getByLabelText("Ingredient");
+    expect([...pick.querySelectorAll("optgroup")].map((g) => g.label)).toEqual(["Supplies", "Consumables"]);
+    await user.click(within(screen.getByRole("complementary", { name: /Orange juice/ })).getByRole("button", { name: "Remove" }));
+    expect(screen.queryByRole("complementary", { name: /Orange juice/ })).toBeNull();
+    expect(rows()).toHaveLength(4);
   });
 
   it("offers plant milk prices once a plant milk is picked", async () => {

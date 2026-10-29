@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Coffee, Croissant, Trash2 } from "lucide-react"
+import { Coffee, Croissant, Plus, Trash2 } from "lucide-react"
 
 import { ConsumablePricingCard, ProfitCard } from "@/components/expenses/ProfitCards"
 import { BreakEvenCard } from "@/components/expenses/Sidebar"
@@ -22,7 +22,7 @@ const COLUMNS = "grid grid-cols-[minmax(150px,1.6fr)_repeat(4,minmax(72px,1fr))_
 
 /**
  * Menu & sales: each drink's or food item's recipe priced from Supplies and Consumables, what it earns per sale and per
- * month, best earners first (picking one opens it to edit); then the month's sales and profit, the break-even (at the menu's average drink
+ * month, in a Drinks and a Food list, best earners first (picking one opens it to edit); then the month's sales and profit, the break-even (at the menu's average drink
  * price), and the prices of the consumables sold.
  */
 export function MenuView({
@@ -65,103 +65,75 @@ export function MenuView({
               {plant ? "Showing plant milk prices" : "Show plant milk prices"}
             </Button>
           )}
-          <Button onClick={() => add("drink")}>
-            <Coffee />
-            Add a drink
-          </Button>
-          <Button variant="outline" onClick={() => add("food")}>
-            <Croissant />
-            Add food
-          </Button>
         </div>
       </div>
 
-      {s.drinks.length === 0 ? (
-        <Card className="items-start p-7">
-          <CardTitle>Nothing on the menu yet</CardTitle>
-          <p className="m-0 text-sm text-muted-foreground">
-            Add the drinks and food you sell, with what goes into each from your Supplies and Consumables, to see which ones earn you the most.
-          </p>
-        </Card>
-      ) : (
-        <>
-          <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
-            <Card className="gap-1">
-              <Eyebrow>{s.withCups ? "Earns you the most a month" : "Biggest margin per sale"}</Eyebrow>
-              <div className="font-display text-xl font-semibold">{s.best?.name ?? "—"}</div>
-              {s.best && (
-                <div className="font-mono text-sm text-good">{s.withCups ? fmt(s.best.monthly) + " a month" : price(s.best.margin) + " each"}</div>
-              )}
-            </Card>
-            <Card className="gap-1">
-              <Eyebrow>Thinnest margin per sale</Eyebrow>
-              <div className="font-display text-xl font-semibold">{s.thinnest?.name ?? "—"}</div>
-              {s.thinnest && (
-                <div className={cn("font-mono text-sm", s.thinnest.margin < 0 ? "text-destructive" : "text-ink-2")}>
-                  {price(s.thinnest.margin)} each ({pct(s.thinnest.marginPct)})
-                </div>
-              )}
-            </Card>
-            <Card className="gap-1">
-              <Eyebrow>Whole menu, a month</Eyebrow>
-              {s.withCups ? (
-                <>
-                  <div className="font-display text-xl font-semibold">{fmt(s.profit)} kept</div>
-                  <div className="font-mono text-sm text-muted-foreground">
-                    {s.cups.toLocaleString("en-GB")} sold · {price(s.perCup)} each
-                  </div>
-                </>
-              ) : (
-                <div className="text-sm text-muted-foreground">Type in about how many of each item you sell a month to see this.</div>
-              )}
-            </Card>
-          </div>
-
-          <div className="flex flex-wrap items-start gap-6">
-            <section aria-label="Menu, best earners first" className="min-w-0 flex-[3_1_560px] rounded-2xl border bg-card py-2">
-              <div className="overflow-x-auto">
-                <div className="flex min-w-[720px] flex-col">
-                  <div className={cn(COLUMNS, "border-b border-line px-5 py-2.5 text-xs font-semibold tracking-[0.04em] text-muted-foreground uppercase")}>
-                    <span>Item</span>
-                    <span className="text-right">Cost</span>
-                    <span className="text-right">Price</span>
-                    <span className="text-right">Margin</span>
-                    <span className="text-right">Sold / mo</span>
-                    <span>Kept / month</span>
-                  </div>
-                  {s.drinks.map((d) => (
-                    <DrinkRow
-                      key={d.id}
-                      d={d}
-                      on={d.id === selected?.id}
-                      max={Math.max(...s.drinks.map((x) => x.monthly), 0)}
-                      fmt={fmt}
-                      price={price}
-                      plantNote={plant && d.hasMilk ? `plant milk +${price(num(month.menu.plantMilk.surcharge))}` : ""}
-                      onPick={() => setPicked(d.id)}
-                    />
-                  ))}
-                </div>
-              </div>
-              <p className="m-0 px-5 pt-3 pb-2 text-[13px] text-muted-foreground">
-                Prices include VAT, at each item&apos;s rate; cost and margin don&apos;t. Pick an item to change its recipe and price.
-              </p>
-            </section>
-
-            {selected && (
-              <DrinkEditor
-                key={selected.id}
-                month={month}
-                d={selected}
-                plant={plant && selected.hasMilk}
-                mutate={mutate}
-                price={price}
-                onDelete={() => setPicked(null)}
-              />
+      {s.drinks.length > 0 && (
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
+          <Card className="gap-1">
+            <Eyebrow>{s.withCups ? "Earns you the most a month" : "Biggest margin per sale"}</Eyebrow>
+            <div className="font-display text-xl font-semibold">{s.best?.name ?? "—"}</div>
+            {s.best && (
+              <div className="font-mono text-sm text-good">{s.withCups ? fmt(s.best.monthly) + " a month" : price(s.best.margin) + " each"}</div>
             )}
-          </div>
-        </>
+          </Card>
+          <Card className="gap-1">
+            <Eyebrow>Thinnest margin per sale</Eyebrow>
+            <div className="font-display text-xl font-semibold">{s.thinnest?.name ?? "—"}</div>
+            {s.thinnest && (
+              <div className={cn("font-mono text-sm", s.thinnest.margin < 0 ? "text-destructive" : "text-ink-2")}>
+                {price(s.thinnest.margin)} each ({pct(s.thinnest.marginPct)})
+              </div>
+            )}
+          </Card>
+          <Card className="gap-1">
+            <Eyebrow>Whole menu, a month</Eyebrow>
+            {s.withCups ? (
+              <>
+                <div className="font-display text-xl font-semibold">{fmt(s.profit)} kept</div>
+                <div className="font-mono text-sm text-muted-foreground">
+                  {s.cups.toLocaleString("en-GB")} sold · {price(s.perCup)} each
+                </div>
+              </>
+            ) : (
+              <div className="text-sm text-muted-foreground">Type in about how many of each item you sell a month to see this.</div>
+            )}
+          </Card>
+        </div>
       )}
+
+      <div className="flex flex-wrap items-start gap-6">
+        <div className="flex min-w-0 flex-[3_1_560px] flex-col gap-4">
+          {(["drink", "food"] as const).map((kind) => (
+            <MenuTable
+              key={kind}
+              kind={kind}
+              items={s.drinks.filter((d) => d.kind === kind)}
+              selected={selected?.id}
+              fmt={fmt}
+              price={price}
+              plantNote={(d) => (plant && d.hasMilk ? `plant milk +${price(num(month.menu.plantMilk.surcharge))}` : "")}
+              onPick={setPicked}
+              onAdd={() => add(kind)}
+            />
+          ))}
+          <p className="m-0 text-[13px] text-muted-foreground">
+            Prices include VAT, at each item&apos;s rate; cost and margin don&apos;t. Pick an item to change its recipe and price.
+          </p>
+        </div>
+
+        {selected && (
+          <DrinkEditor
+            key={selected.id}
+            month={month}
+            d={selected}
+            plant={plant && selected.hasMilk}
+            mutate={mutate}
+            price={price}
+            onDelete={() => setPicked(null)}
+          />
+        )}
+      </div>
 
       <section aria-labelledby="sales-heading" className="flex flex-col gap-4">
         <h2 id="sales-heading" className="m-0 font-display text-[22px] font-bold">
@@ -180,6 +152,68 @@ export function MenuView({
 
       <MenuSettingsCard month={month} mutate={mutate} />
     </div>
+  )
+}
+
+/** One part of the menu, drinks or food, best earners first, with its own button to add to it. */
+function MenuTable({
+  kind,
+  items,
+  selected,
+  fmt,
+  price,
+  plantNote,
+  onPick,
+  onAdd,
+}: {
+  kind: Drink["kind"]
+  items: DrinkFigures[]
+  selected?: string
+  fmt: Fmt
+  price: Fmt
+  plantNote: (d: DrinkFigures) => string
+  onPick: (id: string) => void
+  onAdd: () => void
+}) {
+  const food = kind === "food"
+  const title = food ? "Food" : "Drinks"
+  const max = Math.max(...items.map((x) => x.monthly), 0)
+  return (
+    <section aria-label={`${title}, best earners first`} className="min-w-0 rounded-2xl border bg-card py-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-2 pb-3">
+        <h3 className="m-0 flex items-center gap-2 font-display text-[17px] font-bold">
+          {food ? <Croissant aria-hidden="true" className="size-[18px]" /> : <Coffee aria-hidden="true" className="size-[18px]" />}
+          {title}
+        </h3>
+        <Button variant={food ? "outline" : "default"} onClick={onAdd}>
+          <Plus />
+          {food ? "Add food" : "Add a drink"}
+        </Button>
+      </div>
+      {items.length === 0 ? (
+        <p className="m-0 border-t border-line px-5 pt-3 pb-2 text-sm text-muted-foreground">
+          {food
+            ? "No food yet. Add what you sell to eat (croissants, sandwiches, cakes…) to see what each one earns."
+            : "No drinks yet. Add what you sell to drink (coffees, teas, juices…) to see what each one earns."}
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <div className="flex min-w-[720px] flex-col">
+            <div className={cn(COLUMNS, "border-y border-line px-5 py-2.5 text-xs font-semibold tracking-[0.04em] text-muted-foreground uppercase")}>
+              <span>{food ? "Food" : "Drink"}</span>
+              <span className="text-right">Cost</span>
+              <span className="text-right">Price</span>
+              <span className="text-right">Margin</span>
+              <span className="text-right">{food ? "Sold / mo" : "Cups / mo"}</span>
+              <span>Kept / month</span>
+            </div>
+            {items.map((d) => (
+              <DrinkRow key={d.id} d={d} on={d.id === selected} max={max} fmt={fmt} price={price} plantNote={plantNote(d)} onPick={() => onPick(d.id)} />
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -213,7 +247,6 @@ function DrinkRow({
     >
       <span className="flex min-w-0 flex-col">
         <span className="truncate font-semibold">{d.name}</span>
-        {d.kind === "food" && <span className="text-xs text-muted-foreground">Food</span>}
         {plantNote && <span className="text-xs text-muted-foreground">{plantNote}</span>}
       </span>
       <span className="text-right font-mono">{price(d.cost)}</span>
@@ -259,9 +292,14 @@ function DrinkEditor({
   if (!drink) return null
   const { target } = menuRates(month)
   const food = d.kind === "food"
-  const supplies = month.supplies.filter((s) => s.label.trim())
+  // Food is made from what's bought in (Consumables); coffee, milk and cups aren't offered, except one already in the recipe.
+  const supplies = month.supplies.filter((s) => s.label.trim() && (!food || drink.recipe.some((r) => r.supplyId === s.id)))
   const consumables = month.consumables.filter((s) => s.label.trim())
   const usable = [...supplies, ...consumables]
+  const remove = () => {
+    mutate((m) => void (m.menu.drinks = m.menu.drinks.filter((x) => x.id !== d.id)))
+    onDelete()
+  }
   const set = (fn: (x: Drink) => void) =>
     mutate((m) => {
       const x = m.menu.drinks.find((y) => y.id === d.id)
@@ -271,6 +309,30 @@ function DrinkEditor({
 
   return (
     <aside aria-label={`${d.name}: recipe and price`} className="flex min-w-0 flex-[2_1_400px] flex-col gap-4 rounded-2xl border bg-card p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Added on the wrong list? Move it rather than starting again. */}
+        <div role="group" aria-label="On the menu as" className="flex gap-1 rounded-xl border bg-subtle p-1">
+          {(["drink", "food"] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              aria-pressed={d.kind === k}
+              onClick={() => set((x) => void (x.kind = k))}
+              className={cn(
+                "flex min-h-9 cursor-pointer items-center gap-1.5 rounded-lg px-3 text-sm font-semibold outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                d.kind === k ? "bg-primary text-primary-foreground" : "text-ink-2 hover:bg-accent",
+              )}
+            >
+              {k === "food" ? <Croissant aria-hidden="true" className="size-4" /> : <Coffee aria-hidden="true" className="size-4" />}
+              {k === "food" ? "Food" : "Drink"}
+            </button>
+          ))}
+        </div>
+        <Button variant="outline" onClick={remove} className="text-destructive">
+          <Trash2 />
+          Remove
+        </Button>
+      </div>
       <Field label={food ? "Food" : "Drink"}>
         <Input value={drink.name} placeholder={food ? "e.g. Croissant" : "e.g. Cappuccino"} maxLength={120} onChange={(e) => set((x) => void (x.name = e.target.value))} />
       </Field>
@@ -294,7 +356,9 @@ function DrinkEditor({
         </Eyebrow>
         {usable.length === 0 && (
           <p className="m-0 text-sm text-muted-foreground">
-            Add your supplies (beans, milk, cups…) or consumables (pastries…) on the Expenses view first.
+            {food
+              ? "Add what goes into your food (pastries, bread, cheese…) under Consumables on the Expenses view first."
+              : "Add your supplies (beans, milk, cups…) or consumables (juice…) on the Expenses view first."}
           </p>
         )}
         {drink.recipe.map((r, i) => {
@@ -377,17 +441,6 @@ function DrinkEditor({
         </div>
       )}
 
-      <Button
-        variant="ghost"
-        className="self-start text-destructive"
-        onClick={() => {
-          mutate((m) => void (m.menu.drinks = m.menu.drinks.filter((x) => x.id !== d.id)))
-          onDelete()
-        }}
-      >
-        <Trash2 />
-        Remove {d.name} from the menu
-      </Button>
     </aside>
   )
 }
