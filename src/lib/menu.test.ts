@@ -1,0 +1,114 @@
+import { describe, expect, it } from "vitest";
+import { cupCost, type Drink, type MonthData, withDefaults } from "./expenses";
+import { drinkFigures, menuSummary, plantMilkReady } from "./menu";
+
+const supplies = [
+  { id: "b", label: "Coffee beans", qty: "", unit: "kg", price: "20" },
+  { id: "m", label: "Milk", qty: "", unit: "L", price: "1" },
+  { id: "o", label: "Oat milk", qty: "", unit: "L", price: "2" },
+  { id: "c", label: "Cups", qty: "", unit: "pcs", price: "0.10" },
+];
+const latte: Drink = {
+  id: "latte",
+  name: "Latte",
+  price: "5.00",
+  cups: "100",
+  recipe: [
+    { id: "r1", supplyId: "b", qty: "0.02" },
+    { id: "r2", supplyId: "m", qty: "0.2" },
+    { id: "r3", supplyId: "c", qty: "1" },
+  ],
+};
+const espresso: Drink = {
+  id: "espresso",
+  name: "Espresso",
+  price: "2.50",
+  cups: "300",
+  recipe: [
+    { id: "r4", supplyId: "b", qty: "0.02" },
+    { id: "r5", supplyId: "c", qty: "1" },
+  ],
+};
+
+function month(drinks: Drink[] = [latte, espresso], plantMilk = { milkId: "m", plantId: "o", surcharge: "0.50" }): MonthData {
+  return withDefaults({
+    premises: [],
+    utilities: [],
+    supplies,
+    consumables: [],
+    staff: [],
+    other: [],
+    days: "",
+    coffeesPerCustomer: "1",
+    extrasPerCustomer: "",
+    revenue: "",
+    cup: { recipe: [], margin: "0", vat: "" },
+    consumablePricing: { margin: "0", vat: "" },
+    menu: { drinks, vat: "25", target: "60", plantMilk },
+  });
+}
+
+describe("drinkFigures", () => {
+  it("prices the recipe from Supplies and takes VAT out of the menu price", () => {
+    const d = drinkFigures(month(), latte);
+    expect(d.cost).toBeCloseTo(0.7); // 0.02 kg × 20 + 0.2 L × 1 + 1 × 0.10
+    expect(d.net).toBeCloseTo(4); // 5.00 ÷ 1.25
+    expect(d.margin).toBeCloseTo(3.3);
+    expect(d.marginPct).toBeCloseTo(0.825);
+    expect(d.monthly).toBeCloseTo(330);
+    // 0.7 ÷ (1 − 60%) = 1.75 without VAT
+    expect(d.targetPrice).toBeCloseTo(2.1875);
+  });
+
+  it("swaps in plant milk with its surcharge, only for drinks with the milk", () => {
+    const m = month();
+    const d = drinkFigures(m, latte, true);
+    expect(d.lines.map((l) => l.supplyId)).toEqual(["b", "o", "c"]);
+    expect(d.cost).toBeCloseTo(0.9);
+    expect(d.price).toBeCloseTo(5.5);
+    expect(d.margin).toBeCloseTo(3.5); // 5.50 ÷ 1.25 − 0.90
+    expect(drinkFigures(m, espresso, true)).toMatchObject({ hasMilk: false, price: 2.5 });
+  });
+
+  it("offers plant milk only when both supplies are picked and still listed", () => {
+    expect(plantMilkReady(month())).toBe(true);
+    expect(plantMilkReady(month(undefined, { milkId: "m", plantId: "", surcharge: "" }))).toBe(false);
+    expect(plantMilkReady(month(undefined, { milkId: "m", plantId: "gone", surcharge: "" }))).toBe(false);
+    expect(drinkFigures(month(undefined, { milkId: "m", plantId: "", surcharge: "1" }), latte, true).price).toBe(5);
+  });
+});
+
+describe("menuSummary", () => {
+  it("ranks drinks by profit a month and finds the thinnest margin", () => {
+    const s = menuSummary(month());
+    expect(s.drinks.map((d) => d.id)).toEqual(["espresso", "latte"]); // 450 a month against 330
+    expect(s.best?.id).toBe("espresso");
+    expect(s.thinnest?.id).toBe("espresso"); // 1.50 a cup against 3.30
+    expect(s.cups).toBe(400);
+    expect(s.profit).toBeCloseTo(780);
+    expect(s.sales).toBeCloseTo(1000);
+    expect(s.perCup).toBeCloseTo(1.95);
+  });
+
+  it("ranks by margin per cup when cups sold aren't known", () => {
+    const s = menuSummary(month([{ ...latte, cups: "" }, { ...espresso, cups: "" }]));
+    expect(s.withCups).toBe(false);
+    expect(s.drinks.map((d) => d.id)).toEqual(["latte", "espresso"]);
+  });
+});
+
+describe("a month saved before menus", () => {
+  it("gets one drink from its cup recipe and price", () => {
+    const old = {
+      ...month(),
+      cup: { recipe: [{ id: "x", supplyId: "b", qty: "0.02" }], margin: "100", vat: "25" },
+      menu: undefined,
+    };
+    const m = withDefaults(old);
+    expect(m.menu.drinks).toHaveLength(1);
+    expect(m.menu.drinks[0]).toMatchObject({ name: "Coffee", price: cupCost(old).priceInclVat.toFixed(2), cups: "" });
+    expect(m.menu.drinks[0].recipe[0]).toMatchObject({ supplyId: "b", qty: "0.02" });
+    expect(m.menu.drinks[0].recipe[0].id).not.toBe("x");
+    expect(m.menu).toMatchObject({ vat: "25", plantMilk: { milkId: "m", plantId: "o" } });
+  });
+});

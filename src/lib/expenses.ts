@@ -57,6 +57,18 @@ export interface CupSettings {
   vat: string;
 }
 
+/** A drink on the menu: its recipe from Supplies, its menu price (VAT included) and how many sell a month. */
+export interface Drink { id: string; name: string; price: string; cups: string; recipe: RecipeItem[] }
+export interface MenuSettings {
+  drinks: Drink[];
+  /** VAT on drinks, in %. Menu prices include it. */
+  vat: string;
+  /** The margin a suggested price aims for, in % of the price excl. VAT. */
+  target: string;
+  /** Plant milk: the supply it stands in for, the plant milk supply, and its extra charge (VAT included). */
+  plantMilk: { milkId: string; plantId: string; surcharge: string };
+}
+
 export interface MonthData {
   premises: LineItem[];
   utilities: LineItem[];
@@ -75,6 +87,7 @@ export interface MonthData {
   cup: CupSettings;
   /** Selling consumables: margin on cost and VAT, both in %. */
   consumablePricing: { margin: string; vat: string };
+  menu: MenuSettings;
 }
 
 /** Keyed by "YYYY-MM". */
@@ -149,7 +162,7 @@ export function compactFormatter(cur: Currency = DEFAULT_CURRENCY) {
 }
 
 export function sampleMonth(): MonthData {
-  const m: Omit<MonthData, "cup" | "consumablePricing"> = {
+  const m: Omit<MonthData, "cup" | "consumablePricing" | "menu"> = {
     premises: [
       { id: uid(), label: "Monthly rent", amount: "3000" },
       { id: uid(), label: "Shared building charges", amount: "250" },
@@ -192,8 +205,49 @@ export function sampleMonth(): MonthData {
     extrasPerCustomer: "2",
     revenue: "26000",
   };
-  return { ...m, cup: { ...defaultCup(m.supplies), margin: "250", vat: "25" }, consumablePricing: { margin: "150", vat: "25" } };
+  const [cups, lids, beans, milk] = m.supplies;
+  const recipe = (milkL: string) => [
+    { id: uid(), supplyId: beans.id, qty: "0.018" },
+    ...(milkL ? [{ id: uid(), supplyId: milk.id, qty: milkL }] : []),
+    { id: uid(), supplyId: cups.id, qty: "1" },
+    { id: uid(), supplyId: lids.id, qty: "1" },
+  ];
+  const menu: MenuSettings = {
+    drinks: [
+      { id: uid(), name: "Espresso", price: "2.80", cups: "700", recipe: recipe("") },
+      { id: uid(), name: "Cappuccino", price: "3.60", cups: "1100", recipe: recipe("0.15") },
+      { id: uid(), name: "Caffè latte", price: "3.90", cups: "800", recipe: recipe("0.25") },
+      { id: uid(), name: "Flat white", price: "3.80", cups: "400", recipe: recipe("0.12") },
+    ],
+    vat: "25",
+    target: "70",
+    plantMilk: { milkId: milk.id, plantId: "", surcharge: "" },
+  };
+  return { ...m, cup: { ...defaultCup(m.supplies), margin: "250", vat: "25" }, consumablePricing: { margin: "150", vat: "25" }, menu };
 }
+
+/** The menu for a month saved before menus existed: one drink, from its cup recipe and price. */
+export function defaultMenu(m: Omit<MonthData, "menu">): MenuSettings {
+  const c = cupCost(m);
+  const milk = m.supplies.find((s) => /milk/i.test(s.label) && !PLANT_MILK.test(s.label));
+  const plant = m.supplies.find((s) => PLANT_MILK.test(s.label));
+  return {
+    drinks: [
+      {
+        id: uid(),
+        name: "Coffee",
+        price: c.priceInclVat > 0 ? c.priceInclVat.toFixed(2) : "",
+        cups: "",
+        recipe: m.cup.recipe.map((r) => ({ ...r, id: uid() })),
+      },
+    ],
+    vat: m.cup.vat,
+    target: "70",
+    plantMilk: { milkId: milk?.id ?? "", plantId: plant?.id ?? "", surcharge: "" },
+  };
+}
+
+const PLANT_MILK = /oat|soy|almond|plant|coconut|rice/i;
 
 /** Typical amounts per cup, matched to supply items by name. */
 const RECIPE_GUESS: [RegExp, Record<string, string>][] = [
@@ -215,9 +269,9 @@ export function defaultCup(supplies: SupplyItem[]): CupSettings {
 }
 
 /** Fill in fields added after a month was saved. */
-export function withDefaults(m: MonthData): MonthData {
-  const p = m as Partial<MonthData> & MonthData;
-  return {
+export function withDefaults(m: Omit<MonthData, "menu"> & { menu?: MenuSettings }): MonthData {
+  const p = m as Partial<MonthData> & Omit<MonthData, "menu">;
+  const filled: Omit<MonthData, "menu"> = {
     ...p,
     revenue: typeof p.revenue === "string" ? p.revenue : "",
     consumables: Array.isArray(p.consumables) ? p.consumables : [],
@@ -226,6 +280,7 @@ export function withDefaults(m: MonthData): MonthData {
     extrasPerCustomer: typeof p.extrasPerCustomer === "string" ? p.extrasPerCustomer : "",
     cup: p.cup && Array.isArray(p.cup.recipe) ? { ...p.cup, vat: p.cup.vat ?? "" } : defaultCup(p.supplies ?? []),
   };
+  return { ...filled, menu: p.menu && Array.isArray(p.menu.drinks) ? p.menu : defaultMenu(filled) };
 }
 
 export function staffLine(x: StaffItem) {
@@ -308,7 +363,7 @@ export function profitOf(m: MonthData, total: number) {
 }
 
 /** What one cup's ingredients cost, and the selling price with the margin added on that cost. */
-export function cupCost(m: MonthData) {
+export function cupCost(m: Pick<MonthData, "supplies" | "cup">) {
   const lines = (m.cup?.recipe ?? []).map((r) => {
     const s = m.supplies.find((x) => x.id === r.supplyId);
     return { ...r, supply: s, cost: s ? num(r.qty) * num(s.price) : 0 };

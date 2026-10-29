@@ -2,7 +2,7 @@
 // country they picked). Saved in the browser in local mode, and in the owner's account otherwise (app/api/workspace).
 // Shared by the browser and the server, so the server checks what it's sent with the same rules the app saves by.
 
-import { type Currency, isCurrency, type MonthData, type MonthsData, withDefaults } from "./expenses";
+import { type Currency, isCurrency, type MenuSettings, type MonthData, type MonthsData, withDefaults } from "./expenses";
 
 export interface Workspace {
   month: string;
@@ -43,6 +43,19 @@ function list<T extends { id: string }>(v: unknown, item: (x: Record<string, unk
 const lineItems = (v: unknown) => list(v, (x) => ({ id: id(x.id), label: text(x.label), amount: amount(x.amount) }));
 const supplyItems = (v: unknown) =>
   list(v, (x) => ({ id: id(x.id), label: text(x.label), qty: amount(x.qty), unit: text(x.unit, 20), price: amount(x.price) }));
+const recipe = (v: unknown) => list(v, (x) => ({ id: id(x.id), supplyId: id(x.supplyId), qty: amount(x.qty) }));
+
+/** The menu, or undefined when the month has none yet (withDefaults then makes one from the cup recipe). */
+function menu(v: unknown): MenuSettings | undefined {
+  if (!isRecord(v) || !Array.isArray(v.drinks)) return undefined;
+  const plant = isRecord(v.plantMilk) ? v.plantMilk : {};
+  return {
+    drinks: list(v.drinks, (x) => ({ id: id(x.id), name: text(x.name), price: amount(x.price), cups: amount(x.cups), recipe: recipe(x.recipe) })),
+    vat: amount(v.vat),
+    target: amount(v.target),
+    plantMilk: { milkId: id(plant.milkId), plantId: id(plant.plantId), surcharge: amount(plant.surcharge) },
+  };
+}
 
 /** One month, keeping only known fields of the right type; fields added since it was saved are filled in. */
 export function cleanMonth(v: unknown): MonthData | null {
@@ -68,12 +81,9 @@ export function cleanMonth(v: unknown): MonthData | null {
     coffeesPerCustomer: amount(v.coffeesPerCustomer),
     extrasPerCustomer: amount(v.extrasPerCustomer),
     revenue: amount(v.revenue),
-    cup: {
-      recipe: list(cup.recipe, (x) => ({ id: id(x.id), supplyId: typeof x.supplyId === "string" ? id(x.supplyId) : "", qty: amount(x.qty) })),
-      margin: amount(cup.margin),
-      vat: amount(cup.vat),
-    },
+    cup: { recipe: recipe(cup.recipe), margin: amount(cup.margin), vat: amount(cup.vat) },
     consumablePricing: { margin: amount(pricing.margin), vat: amount(pricing.vat) },
+    menu: menu(v.menu),
   });
 }
 
