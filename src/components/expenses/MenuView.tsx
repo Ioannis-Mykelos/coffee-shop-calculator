@@ -8,8 +8,8 @@ import { BreakEvenCard } from "@/components/expenses/Sidebar"
 import { Button } from "@/components/ui/button"
 import { Card, Eyebrow } from "@/components/ui/card"
 import { Field, Input, NumberInput } from "@/components/ui/input"
-import { type Currency, type Drink, type MonthData, PLANT_MILK, drinkVat, num, uid } from "@/lib/expenses"
-import { type DrinkFigures, menuRates, menuSummary, plantMilkReady } from "@/lib/menu"
+import { type Currency, type Drink, type MonthData, drinkVat, uid } from "@/lib/expenses"
+import { type DrinkFigures, menuRates, menuSummary } from "@/lib/menu"
 import { cn } from "@/lib/utils"
 
 type Mutate = (fn: (m: MonthData) => void) => void
@@ -41,10 +41,8 @@ export function MenuView({
   fmt: Fmt
   price: Fmt
 }) {
-  const [plant, setPlant] = useState(false)
   const [picked, setPicked] = useState<string | null>(null)
-  const plantReady = plantMilkReady(month)
-  const s = menuSummary(month, plant && plantReady)
+  const s = menuSummary(month)
   const selected = s.drinks.find((d) => d.id === picked) ?? s.drinks[0] ?? null
 
   const add = (kind: Drink["kind"]) => {
@@ -59,18 +57,9 @@ export function MenuView({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="m-0 max-w-[620px] text-sm text-muted-foreground">
-          Each recipe is priced from your Supplies and Consumables. Margin is the menu price without VAT, minus what the item costs to make.
-        </p>
-        <div className="flex flex-wrap gap-2.5">
-          {plantReady && (
-            <Button variant="outline" aria-pressed={plant} onClick={() => setPlant((p) => !p)} className={cn(plant && "border-brand bg-brand-soft text-brand-ink")}>
-              {plant ? "Showing plant milk prices" : "Show plant milk prices"}
-            </Button>
-          )}
-        </div>
-      </div>
+      <p className="m-0 max-w-[620px] text-sm text-muted-foreground">
+        Each recipe is priced from your Supplies and Consumables. Margin is the menu price without VAT, minus what the item costs to make.
+      </p>
 
       {s.drinks.length > 0 && (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
@@ -116,7 +105,6 @@ export function MenuView({
               selected={selected?.id}
               fmt={fmt}
               price={price}
-              plantNote={(d) => (plant && d.hasMilk ? `plant milk +${price(num(month.menu.plantMilk.surcharge))}` : "")}
               onPick={setPicked}
               onAdd={() => add(kind)}
             />
@@ -131,7 +119,6 @@ export function MenuView({
             key={selected.id}
             month={month}
             d={selected}
-            plant={plant && selected.hasMilk}
             mutate={mutate}
             price={price}
             onDelete={() => setPicked(null)}
@@ -164,7 +151,6 @@ function MenuTable({
   selected,
   fmt,
   price,
-  plantNote,
   onPick,
   onAdd,
 }: {
@@ -173,7 +159,6 @@ function MenuTable({
   selected?: string
   fmt: Fmt
   price: Fmt
-  plantNote: (d: DrinkFigures) => string
   onPick: (id: string) => void
   onAdd: () => void
 }) {
@@ -210,7 +195,7 @@ function MenuTable({
               <span>Kept / month</span>
             </div>
             {items.map((d) => (
-              <DrinkRow key={d.id} d={d} on={d.id === selected} max={max} fmt={fmt} price={price} plantNote={plantNote(d)} onPick={() => onPick(d.id)} />
+              <DrinkRow key={d.id} d={d} on={d.id === selected} max={max} fmt={fmt} price={price} onPick={() => onPick(d.id)} />
             ))}
           </div>
         </div>
@@ -225,7 +210,6 @@ function DrinkRow({
   max,
   fmt,
   price,
-  plantNote,
   onPick,
 }: {
   d: DrinkFigures
@@ -233,7 +217,6 @@ function DrinkRow({
   max: number
   fmt: Fmt
   price: Fmt
-  plantNote: string
   onPick: () => void
 }) {
   return (
@@ -249,7 +232,6 @@ function DrinkRow({
     >
       <span className="flex min-w-0 flex-col">
         <span className="truncate font-semibold">{d.name}</span>
-        {plantNote && <span className="text-xs text-muted-foreground">{plantNote}</span>}
       </span>
       <span className="text-right font-mono">{price(d.cost)}</span>
       <span className="flex flex-col text-right font-mono">
@@ -278,14 +260,12 @@ function DrinkRow({
 function DrinkEditor({
   month,
   d,
-  plant,
   mutate,
   price,
   onDelete,
 }: {
   month: MonthData
   d: DrinkFigures
-  plant: boolean
   mutate: Mutate
   price: Fmt
   onDelete: () => void
@@ -308,16 +288,6 @@ function DrinkEditor({
       if (x) fn(x)
     })
   const diff = d.targetPrice - d.price
-  // The plant milk option, set up from any drink with milk in it: the milk it replaces is that drink's.
-  const { plantMilk } = month.menu
-  const milk = food
-    ? undefined
-    : month.supplies.find((s) => drink.recipe.some((r) => r.supplyId === s.id) && (s.id === plantMilk.milkId || (/milk/i.test(s.label) && !PLANT_MILK.test(s.label))))
-  const setPlant = (k: "plantId" | "surcharge", v: string) =>
-    mutate((m) => {
-      m.menu.plantMilk[k] = v
-      if (milk) m.menu.plantMilk.milkId = milk.id
-    })
 
   return (
     <aside aria-label={`${d.name}: recipe and price`} className="flex min-w-0 flex-[2_1_400px] flex-col gap-4 rounded-2xl border bg-card p-5">
@@ -364,7 +334,6 @@ function DrinkEditor({
       <div className="flex flex-col gap-2">
         <Eyebrow>
           Recipe, per {food ? "item" : "cup"}
-          {plant && " (with plant milk)"}
         </Eyebrow>
         {usable.length === 0 && (
           <p className="m-0 text-sm text-muted-foreground">
@@ -427,7 +396,7 @@ function DrinkEditor({
       </div>
 
       <div className="flex flex-col gap-2 rounded-xl border border-line bg-subtle p-3.5 text-sm">
-        <Line label={plant ? "Menu price, with plant milk" : "Menu price"} value={d.price > 0 ? price(d.price) : "—"} />
+        <Line label="Menu price" value={d.price > 0 ? price(d.price) : "—"} />
         <Line label={`VAT (${pct(d.vat)})`} value={"− " + price(d.price - d.net)} muted />
         <Line label="Cost to make" value={"− " + price(d.cost)} muted />
         <div className={cn("flex justify-between border-t border-line pt-2 font-semibold", d.margin < 0 ? "text-destructive" : "text-good")}>
@@ -437,34 +406,6 @@ function DrinkEditor({
           </span>
         </div>
       </div>
-
-      {milk && (
-        <div className="flex flex-col gap-2 rounded-xl border border-line p-3.5">
-          <Eyebrow>Plant milk option</Eyebrow>
-          <p className="m-0 text-[13px] text-muted-foreground">For every drink with {milk.label.trim()}: pick the plant milk that replaces it and what you charge extra.</p>
-          <div className="flex flex-wrap gap-3">
-            <Field label="Plant milk" className="flex-[1_1_160px]">
-              <select
-                value={month.supplies.some((s) => s.id === plantMilk.plantId) ? plantMilk.plantId : ""}
-                onChange={(e) => setPlant("plantId", e.target.value)}
-                className={selectClass}
-              >
-                <option value="">None</option>
-                {month.supplies
-                  .filter((s) => s.label.trim() && s.id !== milk.id)
-                  .map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.label}
-                    </option>
-                  ))}
-              </select>
-            </Field>
-            <Field label="Extra charge, incl. VAT" className="flex-[0_1_150px]">
-              <NumberInput value={plantMilk.surcharge} onChange={(e) => setPlant("surcharge", e.target.value)} />
-            </Field>
-          </div>
-        </div>
-      )}
 
       {d.cost > 0 && (
         <div className="flex flex-wrap items-end justify-between gap-3 rounded-xl bg-brand-soft p-3.5 text-brand-ink">

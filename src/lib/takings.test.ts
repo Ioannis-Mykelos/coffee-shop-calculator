@@ -23,7 +23,6 @@ function month(takings: Record<string, string> = {}): MonthData {
       vat: "25",
       foodVat: "",
       target: "70",
-      plantMilk: { milkId: "", plantId: "", surcharge: "" },
     },
   });
 }

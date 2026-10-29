@@ -26,10 +26,11 @@ export function LocationBar({ location, override, currency, onCountry, onCurrenc
   const currencies = CURRENCIES.includes(currency) ? CURRENCIES : [currency, ...CURRENCIES]
 
   return (
-    <div className="flex min-h-[54px] flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border bg-card px-4 py-2 text-sm">
+    <div className="flex min-h-[54px] flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border bg-card px-3.5 py-2 text-sm">
       <div className="flex flex-wrap items-center gap-2">
+        {/* Kept short so it fits beside the view tabs; the pin says what it is. */}
         <MapPin aria-hidden="true" className="size-4 text-brand" />
-        <span className="text-muted-foreground">Your location</span>
+        <span className="sr-only">Your location</span>
         {known ? (
           // eslint-disable-next-line @next/next/no-img-element -- tiny static SVG, no optimisation needed
           <img src={`/flags/${code}.svg`} alt="" width={21} height={14} className="rounded-[2px] shadow-[0_0_0_1px_var(--border)]" />
@@ -42,7 +43,7 @@ export function LocationBar({ location, override, currency, onCountry, onCurrenc
           <select
             value={override ?? ""}
             onChange={(e) => onCountry(e.target.value || null)}
-            className={selectClass}
+            className={`${selectClass} max-w-32`}
           >
             <option value="">Auto-detect</option>
             {COUNTRY_OPTIONS.map((c) => (

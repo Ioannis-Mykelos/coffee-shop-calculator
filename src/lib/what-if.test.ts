@@ -27,7 +27,6 @@ function month(patch: Partial<MonthData> = {}): MonthData {
       vat: "25",
       foodVat: "",
       target: "70",
-      plantMilk: { milkId: "", plantId: "", surcharge: "" },
     },
     ...patch,
   });

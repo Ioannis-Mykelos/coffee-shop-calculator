@@ -49,7 +49,6 @@ const recipe = (v: unknown) => list(v, (x) => ({ id: id(x.id), supplyId: id(x.su
 /** The menu, or undefined when the month has none yet (withDefaults then makes one from the cup recipe). */
 function menu(v: unknown): MenuSettings | undefined {
   if (!isRecord(v) || !Array.isArray(v.drinks)) return undefined;
-  const plant = isRecord(v.plantMilk) ? v.plantMilk : {};
   return {
     drinks: list(v.drinks, (x) => ({
       id: id(x.id),
@@ -63,7 +62,6 @@ function menu(v: unknown): MenuSettings | undefined {
     vat: amount(v.vat),
     foodVat: amount(v.foodVat),
     target: amount(v.target),
-    plantMilk: { milkId: id(plant.milkId), plantId: id(plant.plantId), surcharge: amount(plant.surcharge) },
   };
 }
 

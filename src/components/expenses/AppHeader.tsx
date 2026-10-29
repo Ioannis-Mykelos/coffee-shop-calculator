@@ -106,7 +106,7 @@ export function AppHeader({ monthLabel, user, saveStatus, view, exportMsg, onPre
                 aria-current={on ? "page" : undefined}
                 onClick={() => onView(key)}
                 className={cn(
-                  "flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-4 text-sm font-semibold outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+                  "flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3.5 text-sm font-semibold outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
                   on ? "bg-primary text-primary-foreground" : "bg-transparent text-ink-2 hover:bg-accent",
                 )}
               >

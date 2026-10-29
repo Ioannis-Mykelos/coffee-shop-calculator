@@ -161,19 +161,6 @@ describe("MenuView", () => {
     expect(screen.queryByRole("complementary", { name: /Orange juice/ })).toBeNull();
     expect(rows()).toHaveLength(5);
   });
-
-  it("offers plant milk prices once a plant milk is picked", async () => {
-    const user = userEvent.setup();
-    const start = sampleMonth();
-    start.supplies.push({ id: "oat", label: "Oat milk", qty: "", unit: "L", price: "2.6" });
-    render(<Harness view="menu" start={start} />);
-    expect(screen.queryByRole("button", { name: /plant milk prices/ })).toBeNull();
-    await user.selectOptions(screen.getByLabelText("Plant milk"), "oat");
-    await user.type(screen.getByLabelText("Extra charge, incl. VAT"), "0.40");
-    await user.click(screen.getByRole("button", { name: "Show plant milk prices" }));
-    expect(screen.getByRole("button", { name: "Showing plant milk prices" }).getAttribute("aria-pressed")).toBe("true");
-    expect(rows().find((r) => r.textContent?.startsWith("Cappuccino"))?.textContent).toContain(`plant milk +${price(0.4)}`);
-  });
 });
 
 describe("TakingsView", () => {
