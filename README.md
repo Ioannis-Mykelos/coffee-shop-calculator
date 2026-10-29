@@ -36,13 +36,14 @@
 
 **Calculator** (`/app`)
 
-- **Six cost categories**, a tab each with a running total: Rent & premises, Utilities, Supplies, Consumables, Staff, Other.
-- **Cost per cup**: a recipe built from the Supplies (beans, milk, cup, lid), then a margin on cost and VAT, giving the customer price.
-- **Consumables pricing**: the same cost, margin and VAT for food and drinks bought in to sell.
-- **Break-even check**: customers needed per month and per day, from coffees per customer and other spend, each with its own VAT taken out.
-- **Sales & profit**: enter the month's takings for the profit or loss, margin, and distance from break-even.
+Four views: **Expenses** (only costs), **Menu & sales** (prices, sales and break-even), **What if** and **Analytics**.
+
+- **Expenses**: six cost categories, a tab each with a running total (Rent & premises, Utilities, Supplies, Consumables, Staff, Other), with the month's total, breakdown and history.
 - **Months**: step back and forward; a new month starts as a copy of the one you came from, with sales blank.
-- **Menu**: every drink with its recipe from the Supplies, menu price (VAT included) and cups sold a month, ranked by what it earns. Cards for the best earner, the thinnest margin and the menu's total; per drink, the price that reaches a target margin. A plant milk option swaps in plant milk with its extra charge. A month saved before menus gets one drink from its cup recipe.
+- **Menu & sales: drinks**: every drink with its recipe from the Supplies, menu price (VAT included) and cups sold a month, ranked by what it earns. Cards for the best earner, the thinnest margin and the menu's total; per drink, the price that reaches a target margin. A plant milk option swaps in plant milk with its extra charge. A month saved before menus gets one drink from its old cup recipe and price.
+- **Menu & sales: sales & profit**: enter the month's takings for the profit or loss, margin, and distance from break-even.
+- **Menu & sales: break-even check**: customers needed per month and per day, from drinks per customer at the menu's average drink price and other spend, each with its own VAT taken out.
+- **Menu & sales: consumables pricing**: cost, margin and VAT for food and drinks bought in to sell.
 - **What if**: sliders for bean and milk prices, rent, extra staff hours, drink prices and cups sold, plus one-tap scenarios, tried on the month's own figures without saving. Shows profit, costs, sales and break-even before and after, and what would keep today's profit: a price rise in %, or more customers a day.
 - **Analytics**: group by month, 3 months, 6 months or year, with KPIs, a stacked bar chart and a breakdown table.
 - **Export month**: a real Excel workbook (Summary, Expenses, Staff, Menu, History), from a built-in writer with no library.
@@ -159,9 +160,8 @@ The month's calculations live in [`src/lib/expenses.ts`](src/lib/expenses.ts), t
 | Supplies, Consumables | Σ quantity × price per unit |
 | Staff (per row) | employees × hours × hourly pay × (1 + contributions % / 100) |
 | Month total | sum of the six categories |
-| Cup cost | Σ recipe amount × the supply's price per unit |
-| Cup price | cost × (1 + margin %), then × (1 + VAT %) for the customer |
-| Average sale, excl. VAT | coffees × cup price ÷ (1 + cup VAT) + other spend ÷ (1 + consumables VAT) |
+| Average drink price | the menu prices (VAT included) weighted by cups sold, or their plain average without cups sold |
+| Average sale, excl. VAT | drinks × average drink price ÷ (1 + menu VAT) + other spend ÷ (1 + consumables VAT) |
 | Customers needed per month / day | ⌈ month total ÷ average sale ⌉, then ÷ opening days |
 | Profit | sales (excl. VAT) − month total |
 | Drink margin (Menu) | menu price ÷ (1 + VAT) − Σ recipe amount × the supply's price per unit |

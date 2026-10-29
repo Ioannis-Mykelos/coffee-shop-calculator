@@ -7,7 +7,6 @@ import {
   breakEven,
   computeTotals,
   consumablePrices,
-  cupCost,
   monthLabel,
   num,
   profitOf,
@@ -142,9 +141,9 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
   sum.push(
     [H("Break-even"), H("")],
     ["Opening days", be.days],
-    ["Coffees per customer", be.coffees],
-    ["Coffee price for the customer (incl. VAT)", M(be.cupPrice)],
-    ["Coffee spend per customer (incl. VAT)", M(be.coffeeSpend)],
+    ["Drinks per customer", be.coffees],
+    ["Average drink price on the menu (incl. VAT)", M(be.cupPrice)],
+    ["Drinks spend per customer (incl. VAT)", M(be.coffeeSpend)],
     ["Other consumables per customer (incl. VAT)", M(be.extras)],
     ["Average sale per customer (incl. VAT)", M(be.avgGross)],
     ["VAT", { v: be.vat, s: S_PCT }],
@@ -165,22 +164,9 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
       [],
     );
   }
-  const c = cupCost(m);
-  sum.push([H("Cost per cup"), H("")]);
-  for (const l of c.lines) if (l.supply) sum.push([`${l.supply.label} (${num(l.qty)} ${l.supply.unit})`, { v: l.cost, s: S_MONEY }]);
-  sum.push(
-    [B("Ingredients cost per cup"), { v: c.ingredients, s: S_MONEY_BOLD }],
-    ["Margin on cost", { v: c.margin, s: S_PCT }],
-    ["Margin per cup", { v: c.profit, s: S_MONEY }],
-    [B("Final price (excl. VAT)"), { v: c.price, s: S_MONEY_BOLD }],
-    ["VAT", { v: c.vat, s: S_PCT }],
-    ["VAT per cup", { v: c.vatAmount, s: S_MONEY }],
-    [B("Customer price (incl. VAT)"), { v: c.priceInclVat, s: S_MONEY_BOLD }],
-  );
   const cp = consumablePrices(m);
   if (cp.items.length) {
     sum.push(
-      [],
       [H("Consumables pricing"), H("Cost"), H("Excl. VAT"), H("Customer price")],
       ["Margin on cost", { v: cp.margin, s: S_PCT }],
       ["VAT", { v: cp.vat, s: S_PCT }],

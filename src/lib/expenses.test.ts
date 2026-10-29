@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  averageDrinkPrice,
   breakEven,
   computeTotals,
   consumablePrices,
@@ -149,6 +150,17 @@ describe("break-even and profit", () => {
     supplies: [{ id: "cups", label: "Cups", qty: "1", unit: "pcs", price: "1" }],
     cup: { recipe: [{ id: "r", supplyId: "cups", qty: "1" }], margin: "100", vat: "25" },
     consumablePricing: { margin: "0", vat: "10" },
+  });
+
+  it("prices drinks from the menu: the old cup recipe's month gets the same answer", () => {
+    // No menu saved: the month's menu is one drink at the old cup price, 2.50, with its 25% VAT.
+    expect(m.menu.drinks.map((d) => d.price)).toEqual(["2.50"]);
+    expect(breakEven(m, 10_000).cupPrice).toBeCloseTo(2.5);
+    // With cups sold, the average is weighted by them; without, it's the plain average.
+    const two = (cups: [string, string]) =>
+      month({ menu: { ...m.menu, drinks: [{ ...m.menu.drinks[0], price: "2", cups: cups[0] }, { ...m.menu.drinks[0], id: "b", price: "4", cups: cups[1] }] } });
+    expect(averageDrinkPrice(two(["300", "100"]))).toBeCloseTo(2.5);
+    expect(averageDrinkPrice(two(["", ""]))).toBeCloseTo(3);
   });
 
   it("takes VAT out of each part of the sale at its own rate", () => {

@@ -91,7 +91,7 @@ export function BreakEvenCard({ month, total, fmt, currency, mutate }: { month: 
             }}
           />
         </Field>
-        <Field label="Avg. coffees per customer">
+        <Field label="Avg. drinks per customer">
           <NumberInput
             value={month.coffeesPerCustomer}
             onChange={(e) => {
@@ -103,9 +103,9 @@ export function BreakEvenCard({ month, total, fmt, currency, mutate }: { month: 
       </div>
       <div className="flex justify-between gap-3 text-sm">
         <span>
-          Coffee spend per customer
+          Drinks per customer
           <span className="block text-[13px] text-muted-foreground">
-            {be.coffees.toLocaleString("en-GB")} × {price(be.cupPrice)} (price for the customer, incl. VAT)
+            {be.coffees.toLocaleString("en-GB")} × {price(be.cupPrice)} (your menu&apos;s average drink, incl. VAT)
           </span>
         </span>
         <strong className="font-mono font-medium">{price(be.coffeeSpend)}</strong>

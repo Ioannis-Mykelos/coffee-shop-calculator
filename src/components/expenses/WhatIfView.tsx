@@ -50,7 +50,7 @@ export function WhatIfView({ month, fmt, price }: { month: MonthData; fmt: Fmt; 
       max: 20,
       step: 1,
       value: signed(c.price),
-      hint: r.cupPrice > 0 ? `About ${c.price >= 0 ? "+" : "−"}${price(Math.abs((r.cupPrice * c.price) / 100))} on an average ${price(r.cupPrice)} drink` : "Set drink prices on the Menu view",
+      hint: r.cupPrice > 0 ? `About ${c.price >= 0 ? "+" : "−"}${price(Math.abs((r.cupPrice * c.price) / 100))} on an average ${price(r.cupPrice)} drink` : "Set drink prices on Menu & sales",
       show: true,
     },
     { key: "sales", label: "Cups sold", min: -40, max: 40, step: 5, value: signed(c.sales), hint: "Supplies and consumables move with it", show: true },
@@ -192,7 +192,7 @@ function Advice({
       <div className={cn(box, "border bg-card")}>
         <span className="font-display text-lg font-semibold">See the effect on profit</span>
         <span className="text-[15px] text-muted-foreground">
-          Type in this month&apos;s takings (Sales &amp; profit, on Expenses), or about how many of each drink you sell (on the Menu).
+          On Menu &amp; sales, type in this month&apos;s takings, or about how many of each drink you sell.
         </span>
       </div>
     )

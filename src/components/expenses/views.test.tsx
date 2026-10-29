@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 
-import { type MonthData, currencyFormatter, priceFormatter, sampleMonth } from "@/lib/expenses";
+import { type MonthData, computeTotals, currencyFormatter, priceFormatter, sampleMonth } from "@/lib/expenses";
 import { MenuView } from "./MenuView";
 import { WhatIfView } from "./WhatIfView";
 
@@ -19,7 +19,11 @@ function Harness({ view, start = sampleMonth() }: { view: "menu" | "whatif"; sta
       fn(next);
       return next;
     });
-  return view === "menu" ? <MenuView month={m} mutate={mutate} fmt={fmt} price={price} /> : <WhatIfView month={m} fmt={fmt} price={price} />;
+  return view === "menu" ? (
+    <MenuView month={m} total={computeTotals(m).total} currency="EUR" mutate={mutate} fmt={fmt} price={price} />
+  ) : (
+    <WhatIfView month={m} fmt={fmt} price={price} />
+  );
 }
 
 const rows = () => within(screen.getByRole("region", { name: "Drinks, best earners first" })).getAllByRole("button");
@@ -57,6 +61,21 @@ describe("MenuView", () => {
     const editor = screen.getByRole("complementary", { name: /Untitled drink/ });
     await user.type(within(editor).getByLabelText("Drink"), "Mocha");
     screen.getByRole("complementary", { name: /Mocha/ });
+  });
+
+  it("shows sales and break-even at the menu's average drink price", async () => {
+    const user = userEvent.setup();
+    render(<Harness view="menu" />);
+    screen.getByRole("heading", { name: "Sales & break-even" });
+    // Sample café: (700 × 2.80 + 1,100 × 3.60 + 800 × 3.90 + 400 × 3.80) ÷ 3,000 cups = 3.52
+    const avg = screen.getByText(/your menu's average drink/);
+    expect(avg.textContent).toContain(price(3.52));
+    await user.click(rows()[0]);
+    const field = within(screen.getByRole("complementary", { name: /Cappuccino/ })).getByLabelText("Menu price, incl. VAT");
+    await user.clear(field);
+    await user.type(field, "4.60");
+    // + 1,100 × 1.00 ÷ 3,000 cups
+    expect(screen.getByText(/your menu's average drink/).textContent).toContain(price(3.52 + 1100 / 3000));
   });
 
   it("offers plant milk prices once a plant milk is picked", async () => {
