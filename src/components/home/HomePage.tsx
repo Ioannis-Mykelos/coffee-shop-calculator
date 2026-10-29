@@ -18,19 +18,21 @@ import {
 } from "lucide-react"
 
 import { CremaLogo } from "@/components/brand/Logo"
-import { CATEGORIES, breakEven, computeTotals, cupCost, priceFormatter, sampleMonth, currencyFormatter } from "@/lib/expenses"
+import { CATEGORIES, breakEven, computeTotals, priceFormatter, sampleMonth, currencyFormatter } from "@/lib/expenses"
+import { drinkFigures } from "@/lib/menu"
 import { cn } from "@/lib/utils"
 import cafe from "../../../public/home/cafe.jpg"
 import menuBoard from "../../../public/home/menu-board.jpg"
 import sign from "../../../public/home/sign.jpg"
 
 // The home page: who Crema is and what it does, for an independent café owner deciding whether to try it. A Server
-// Component with no JavaScript of its own. The figures shown are worked out by the app's own sums (lib/expenses.ts)
-// from its sample café, so the page never shows a number the product wouldn't.
+// Component with no JavaScript of its own. The figures shown are worked out by the app's own sums (lib/expenses.ts,
+// lib/menu.ts) from its sample café, so the page never shows a number the product wouldn't.
 
 const SAMPLE = sampleMonth()
 const TOTALS = computeTotals(SAMPLE)
-const CUP = cupCost(SAMPLE)
+/** The sample menu's flat white */
+const CUP = drinkFigures(SAMPLE, SAMPLE.menu.drinks.find((d) => d.name === "Flat white") ?? SAMPLE.menu.drinks[0])
 const BREAK_EVEN = breakEven(SAMPLE, TOTALS.total)
 const price = priceFormatter("EUR")
 const money = currencyFormatter("EUR")
@@ -162,7 +164,7 @@ function Hero({ links, startLabel }: { links: HomeLinks; startLabel: string }) {
   )
 }
 
-/** One cup, priced the way Crema prices it: the recipe from the supplies, then margin and VAT. */
+/** One cup, priced the way Crema prices it: the recipe from the supplies, against its menu price. */
 function CupReceipt({ className }: { className?: string }) {
   return (
     <figure
@@ -176,17 +178,17 @@ function CupReceipt({ className }: { className?: string }) {
       <dl className="m-0 flex flex-col gap-1.5">
         {CUP.lines.map((l) => (
           <div key={l.id} className="flex justify-between gap-3 text-espresso/75">
-            <dt>{l.supply?.label}</dt>
+            <dt>{l.label}</dt>
             <dd className="m-0">{price(l.cost)}</dd>
           </div>
         ))}
         <div className="mt-1 flex justify-between gap-3 border-t border-dashed border-espresso/20 pt-2">
           <dt>Cost</dt>
-          <dd className="m-0">{price(CUP.ingredients)}</dd>
+          <dd className="m-0">{price(CUP.cost)}</dd>
         </div>
         <div className="flex justify-between gap-3 rounded-lg bg-brand-soft px-2 py-1.5 font-semibold text-brand-strong">
           <dt>Price incl. VAT</dt>
-          <dd className="m-0">{price(CUP.priceInclVat)}</dd>
+          <dd className="m-0">{price(CUP.price)}</dd>
         </div>
       </dl>
     </figure>
@@ -387,8 +389,8 @@ function Preview() {
           </div>
           <div className="flex flex-col gap-1 rounded-2xl bg-cream p-6 text-espresso">
             <span className="text-xs font-semibold tracking-[0.08em] uppercase opacity-70">Price of a cup</span>
-            <span className="font-display text-[40px] font-semibold">{price(CUP.priceInclVat)}</span>
-            <span className="text-sm opacity-75">costs {price(CUP.ingredients)} to make, VAT included</span>
+            <span className="font-display text-[40px] font-semibold">{price(CUP.price)}</span>
+            <span className="text-sm opacity-75">costs {price(CUP.cost)} to make, VAT included</span>
           </div>
         </div>
       </div>

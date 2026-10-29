@@ -3,10 +3,12 @@
 import { useState } from "react"
 import { Plus, Trash2 } from "lucide-react"
 
+import { ConsumablePricingCard, ProfitCard } from "@/components/expenses/ProfitCards"
+import { BreakEvenCard } from "@/components/expenses/Sidebar"
 import { Button } from "@/components/ui/button"
 import { Card, CardTitle, Eyebrow } from "@/components/ui/card"
 import { Field, Input, NumberInput } from "@/components/ui/input"
-import { type Drink, type MonthData, num, uid } from "@/lib/expenses"
+import { type Currency, type Drink, type MonthData, num, uid } from "@/lib/expenses"
 import { type DrinkFigures, menuRates, menuSummary, plantMilkReady } from "@/lib/menu"
 import { cn } from "@/lib/utils"
 
@@ -19,10 +21,26 @@ const selectClass =
 const COLUMNS = "grid grid-cols-[minmax(150px,1.6fr)_repeat(4,minmax(72px,1fr))_minmax(160px,1.6fr)] gap-3"
 
 /**
- * The drinks menu: each drink's recipe priced from Supplies, what it earns per cup and per month, best earners first.
- * Picking a drink opens its recipe and prices to edit.
+ * Menu & sales: each drink's recipe priced from Supplies, what it earns per cup and per month, best earners first
+ * (picking a drink opens it to edit); then the month's sales and profit, the break-even (at the menu's average drink
+ * price), and the prices of the consumables sold.
  */
-export function MenuView({ month, mutate, fmt, price }: { month: MonthData; mutate: Mutate; fmt: Fmt; price: Fmt }) {
+export function MenuView({
+  month,
+  total,
+  currency,
+  mutate,
+  fmt,
+  price,
+}: {
+  month: MonthData
+  /** The month's costs */
+  total: number
+  currency: Currency
+  mutate: Mutate
+  fmt: Fmt
+  price: Fmt
+}) {
   const [plant, setPlant] = useState(false)
   const [picked, setPicked] = useState<string | null>(null)
   const plantReady = plantMilkReady(month)
@@ -141,6 +159,21 @@ export function MenuView({ month, mutate, fmt, price }: { month: MonthData; muta
           </div>
         </>
       )}
+
+      <section aria-labelledby="sales-heading" className="flex flex-col gap-4">
+        <h2 id="sales-heading" className="m-0 font-display text-[22px] font-bold">
+          Sales &amp; break-even
+        </h2>
+        <div className="flex flex-wrap items-start gap-6">
+          <div className="flex min-w-0 flex-[1_1_340px] flex-col">
+            <ProfitCard month={month} total={total} fmt={fmt} mutate={mutate} />
+          </div>
+          <div className="flex min-w-0 flex-[1_1_340px] flex-col">
+            <BreakEvenCard month={month} total={total} fmt={fmt} currency={currency} mutate={mutate} />
+          </div>
+        </div>
+        <ConsumablePricingCard month={month} price={price} mutate={mutate} />
+      </section>
 
       <MenuSettingsCard month={month} mutate={mutate} />
     </div>

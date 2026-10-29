@@ -8,8 +8,7 @@ import { CategoryTabs } from "@/components/expenses/CategoryTabs"
 import { LineItemsEditor, StaffEditor, SuppliesEditor } from "@/components/expenses/Editors"
 import { LocationBar } from "@/components/expenses/LocationBar"
 import { MenuView } from "@/components/expenses/MenuView"
-import { ConsumablePricingCard, CupCostCard, ProfitCard } from "@/components/expenses/ProfitCards"
-import { BreakEvenCard, BreakdownCard, HistoryCard, TotalCard } from "@/components/expenses/Sidebar"
+import { BreakdownCard, HistoryCard, TotalCard } from "@/components/expenses/Sidebar"
 import { WhatIfView } from "@/components/expenses/WhatIfView"
 import { Button } from "@/components/ui/button"
 import { type StoreMode, useExpensesStore } from "@/hooks/useExpensesStore"
@@ -101,7 +100,7 @@ export function ExpensesApp({ mode, user }: { mode: StoreMode; user?: User }) {
         {view === "analytics" ? (
           <AnalyticsView data={data} month={month} fmt={fmt} currency={state.currency} />
         ) : view === "menu" ? (
-          <MenuView month={m} mutate={mutate} fmt={fmt} price={price} />
+          <MenuView month={m} total={totals.total} currency={state.currency} mutate={mutate} fmt={fmt} price={price} />
         ) : view === "whatif" ? (
           <WhatIfView key={month} month={m} fmt={fmt} price={price} />
         ) : (
@@ -141,14 +140,10 @@ export function ExpensesApp({ mode, user }: { mode: StoreMode; user?: User }) {
                     </Button>
                   </div>
                 </main>
-                <CupCostCard month={m} price={price} mutate={mutate} />
-                <ConsumablePricingCard month={m} price={price} mutate={mutate} />
               </div>
 
               <aside className="flex min-w-0 flex-[1_1_340px] flex-col gap-4">
                 <TotalCard data={data} month={month} totals={totals} fmt={fmt} monthLabel={label} />
-                <BreakEvenCard month={m} total={totals.total} fmt={fmt} currency={state.currency} mutate={mutate} />
-                <ProfitCard month={m} total={totals.total} fmt={fmt} mutate={mutate} />
                 <BreakdownCard totals={totals} fmt={fmt} />
                 <HistoryCard data={data} month={month} fmt={fmt} currency={state.currency} />
               </aside>
