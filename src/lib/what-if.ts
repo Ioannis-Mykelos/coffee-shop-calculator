@@ -47,11 +47,14 @@ export function whatIf(m: MonthData, c: Changes) {
   const typed = String(m.revenue ?? "").trim() !== "";
   const salesSource: "takings" | "menu" | null = typed ? "takings" : menu.withCups ? "menu" : null;
   const sales = typed ? num(m.revenue) : menu.withCups ? menu.sales : null;
-  // Cups sold a month: the menu's estimate, else worked back from the takings at the break-even average sale.
-  const cups = menu.cups > 0 ? menu.cups : typed && be.avg > 0 ? (num(m.revenue) / be.avg) * be.coffees : 0;
+  // Drinks sold a month (a price change moves drink prices, not food's): the menu's estimate, else worked back from
+  // the takings at the break-even average sale.
+  const drinks = menu.drinks.filter((d) => d.kind === "drink");
+  const menuCups = drinks.reduce((a, d) => a + d.cups, 0);
+  const cups = menuCups > 0 ? menuCups : typed && be.avg > 0 ? (num(m.revenue) / be.avg) * be.coffees : 0;
   // Average drink price, which a price change scales: without VAT for sales, with it to show the owner.
-  const cupNet = menu.cups > 0 ? menu.sales / menu.cups : be.cupPrice / (1 + be.vat);
-  const cupPrice = menu.cups > 0 ? menu.drinks.reduce((a, d) => a + d.price * d.cups, 0) / menu.cups : be.cupPrice;
+  const cupNet = menuCups > 0 ? drinks.reduce((a, d) => a + d.net * d.cups, 0) / menuCups : be.cupPrice / (1 + be.vat);
+  const cupPrice = menuCups > 0 ? drinks.reduce((a, d) => a + d.price * d.cups, 0) / menuCups : be.cupPrice;
   const ingredients = (beans: number, milk: number, volume: number) =>
     m.supplies.reduce((a, s) => {
       const f = isBeans(s.label) ? 1 + beans / 100 : isMilk(s.label) ? 1 + milk / 100 : 1;

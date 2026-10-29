@@ -36,17 +36,18 @@
 
 **Calculator** (`/app`)
 
-Four views: **Expenses** (only costs), **Menu & sales** (prices, sales and break-even), **What if** and **Analytics**.
+Five views: **Expenses** (only costs), **Menu & sales** (prices, sales and break-even), **Daily takings**, **What if** and **Analytics**.
 
 - **Expenses**: six cost categories, a tab each with a running total (Rent & premises, Utilities, Supplies, Consumables, Staff, Other), with the month's total, breakdown and history.
-- **Months**: step back and forward; a new month starts as a copy of the one you came from, with sales blank.
-- **Menu & sales: drinks**: every drink with its recipe from the Supplies, menu price (VAT included), its own VAT rate if it differs from the menu's (take-away and sit-in can be taxed differently), and cups sold a month, ranked by what it earns. Cards for the best earner, the thinnest margin and the menu's total; per drink, the price that reaches a target margin. A plant milk option swaps in plant milk with its extra charge. A month saved before menus gets one drink from its old cup recipe and price.
+- **Months**: step back and forward; a new month starts as a copy of the one you came from, with sales and daily takings blank.
+- **Menu & sales: drinks and food**: every drink and food item with its recipe from the Supplies and Consumables, menu price (VAT included), its own VAT rate if it differs from the menu's for its kind (take-away and sit-in can be taxed differently; food has its own default, else the drinks'), and how many sell a month, ranked by what it earns. Cards for the best earner, the thinnest margin and the menu's total; per item, the price that reaches a target margin. A plant milk option swaps in plant milk with its extra charge. A month saved before menus gets one drink from its old cup recipe and price.
 - **Menu & sales: sales & profit**: enter the month's takings for the profit or loss, margin, and distance from break-even.
-- **Menu & sales: break-even check**: customers needed per month and per day, from drinks per customer at the menu's average drink price and other spend, each with its own VAT taken out.
+- **Menu & sales: break-even check**: customers needed per month and per day, from drinks per customer at the menu's average drink price (food left out) and other spend, each with its own VAT taken out.
+- **Daily takings**: a calendar of the month to type each day's till total into (VAT included), green or red against the daily target: the month's costs over its opening days, with the average VAT on a sale on top. Shows what's taken, what's needed, what each day left must take, the pace, the average by day of the week, and can set the month's sales from the takings without VAT.
 - **Menu & sales: consumables pricing**: cost, margin and VAT for food and drinks bought in to sell.
 - **What if**: sliders for bean and milk prices, rent, extra staff hours, drink prices and cups sold, plus one-tap scenarios, tried on the month's own figures without saving. Shows profit, costs, sales and break-even before and after, and what would keep today's profit: a price rise in %, or more customers a day.
 - **Analytics**: group by month, 3 months, 6 months or year, with KPIs, a stacked bar chart and a breakdown table.
-- **Export month**: a real Excel workbook (Summary, Expenses, Staff, Menu, History), from a built-in writer with no library.
+- **Export month**: a real Excel workbook (Summary, Expenses, Staff, Menu, Daily takings when there are any, History), from a built-in writer with no library.
 - **Location and currency**: the visitor's country (from Netlify's IP geolocation, else the browser language) picks the currency, with a flag. Both can be changed by hand. 70+ currencies.
 
 ## Screenshots
@@ -152,7 +153,7 @@ Collections: `users`, `accounts` and `sessions` (Auth.js), `workspaces`, `migrat
 
 ## How the numbers are calculated
 
-The month's calculations live in [`src/lib/expenses.ts`](src/lib/expenses.ts), the menu's in [`menu.ts`](src/lib/menu.ts) and the what-if's in [`what-if.ts`](src/lib/what-if.ts), each with its tests beside it.
+The month's calculations live in [`src/lib/expenses.ts`](src/lib/expenses.ts), the menu's in [`menu.ts`](src/lib/menu.ts), the daily takings' in [`takings.ts`](src/lib/takings.ts) and the what-if's in [`what-if.ts`](src/lib/what-if.ts), each with its tests beside it.
 
 | Figure | Formula |
 | --- | --- |
@@ -164,8 +165,10 @@ The month's calculations live in [`src/lib/expenses.ts`](src/lib/expenses.ts), t
 | Average sale, excl. VAT | drinks × average drink price without VAT + other spend ÷ (1 + consumables VAT) |
 | Customers needed per month / day | ⌈ month total ÷ average sale ⌉, then ÷ opening days |
 | Profit | sales (excl. VAT) − month total |
-| Drink margin (Menu) | menu price ÷ (1 + the drink's VAT, else the menu's) − Σ recipe amount × the supply's price per unit |
+| Margin (Menu) | menu price ÷ (1 + the item's VAT, else the menu's for its kind) − Σ recipe amount × the supply's or consumable's price per unit |
 | Price for the target margin | cost ÷ (1 − target %) × (1 + VAT) |
+| Daily target (takings) | month total × (1 + average VAT on a sale) ÷ opening days, where average VAT = average sale incl. VAT ÷ excl. VAT − 1 |
+| Needed per day from here | (needed − taken) ÷ opening days not yet entered |
 | What if: costs | beans and milk Supplies × (1 + change), all Supplies and Consumables × (1 + cups sold change), Rent & premises × (1 + change), + extra hours × 52 ⁄ 12 × the staff's average hourly cost (part-timers' when there are any) |
 | What if: sales | takings, or the menu's cups × price excl. VAT; × (1 + cups sold change), + cups × average drink price excl. VAT × price change |
 | What if: keep today's profit | lost profit ÷ (cups × average drink price excl. VAT), rounded up to a whole %; or lost profit ÷ average sale ÷ opening days customers |
@@ -202,13 +205,14 @@ crema/
 │   │   ├── home/                  home page, legal page frame
 │   │   ├── auth/                  log-in panel, reset form, page frame
 │   │   ├── account/               account & security
-│   │   ├── expenses/              the calculator: Expenses, Menu, What if and Analytics views
+│   │   ├── expenses/              the calculator: Expenses, Menu, Daily takings, What if and Analytics views
 │   │   ├── brand/                 the Crema mark and wordmark
 │   │   └── ui/                    Button, Input, Card
 │   ├── hooks/useExpensesStore.ts  figures: load, save, versions, import
 │   ├── lib/
 │   │   ├── expenses.ts            types, sample data, the month's calculations
-│   │   ├── menu.ts                each drink's cost, margin and target price
+│   │   ├── menu.ts                each drink's and food item's cost, margin and target price
+│   │   ├── takings.ts             each day's till against the daily break-even target
 │   │   ├── what-if.ts             a change tried on the month's figures
 │   │   ├── workspace.ts           the saved shape and its checks
 │   │   ├── geo.ts                 country → currency, location lookup

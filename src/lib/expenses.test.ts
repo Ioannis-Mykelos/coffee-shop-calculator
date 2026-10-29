@@ -5,6 +5,7 @@ import {
   computeTotals,
   consumablePrices,
   cupCost,
+  drinkVat,
   type MonthData,
   monthKey,
   num,
@@ -177,6 +178,21 @@ describe("break-even and profit", () => {
     expect(be.customersDay).toBe(80);
   });
 
+  it("leaves food out of the average drink: it's in the extras per customer", () => {
+    const croissant = { ...m.menu.drinks[0], id: "f", kind: "food" as const, price: "9.00", cups: "500" };
+    const withFood = { ...m, menu: { ...m.menu, drinks: [...m.menu.drinks, croissant] } };
+    expect(averageDrink(withFood).price).toBeCloseTo(2.5);
+    expect(breakEven(withFood, 10_000).customersDay).toBe(80);
+  });
+
+  it("gives food the menu's food VAT, else the drinks'", () => {
+    const croissant = { ...m.menu.drinks[0], kind: "food" as const, vat: "" };
+    expect(drinkVat(m, croissant)).toBeCloseTo(0.25);
+    expect(drinkVat({ menu: { ...m.menu, foodVat: "12" } }, croissant)).toBeCloseTo(0.12);
+    expect(drinkVat({ menu: { ...m.menu, foodVat: "12" } }, m.menu.drinks[0])).toBeCloseTo(0.25);
+    expect(drinkVat({ menu: { ...m.menu, foodVat: "12" } }, { ...croissant, vat: "6" })).toBeCloseTo(0.06);
+  });
+
   it("takes VAT out of each part of the sale at its own rate", () => {
     const be = breakEven(m, 10_000);
     // Two coffees at 2.50 incl. VAT, and 1.10 of extras incl. 10% VAT.
@@ -204,6 +220,16 @@ describe("withDefaults", () => {
     expect(m.revenue).toBe("");
     expect(m.cup.recipe).toEqual([]);
     expect(m.consumablePricing.margin).toBe("150");
+    expect(m.takings).toEqual({});
+  });
+
+  it("makes drinks of a menu saved before food", () => {
+    const old = sampleMonth() as unknown as { menu: Record<string, unknown> & { drinks: Record<string, unknown>[] } };
+    delete old.menu.foodVat;
+    old.menu.drinks.forEach((d) => delete d.kind);
+    const m = withDefaults(old as unknown as MonthData);
+    expect(m.menu.foodVat).toBe("");
+    expect(m.menu.drinks.every((d) => d.kind === "drink")).toBe(true);
   });
 
   it("keeps the sample month valid", () => {

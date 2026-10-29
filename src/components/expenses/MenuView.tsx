@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Plus, Trash2 } from "lucide-react"
+import { Coffee, Croissant, Trash2 } from "lucide-react"
 
 import { ConsumablePricingCard, ProfitCard } from "@/components/expenses/ProfitCards"
 import { BreakEvenCard } from "@/components/expenses/Sidebar"
@@ -21,8 +21,8 @@ const selectClass =
 const COLUMNS = "grid grid-cols-[minmax(150px,1.6fr)_repeat(4,minmax(72px,1fr))_minmax(160px,1.6fr)] gap-3"
 
 /**
- * Menu & sales: each drink's recipe priced from Supplies, what it earns per cup and per month, best earners first
- * (picking a drink opens it to edit); then the month's sales and profit, the break-even (at the menu's average drink
+ * Menu & sales: each drink's or food item's recipe priced from Supplies and Consumables, what it earns per sale and per
+ * month, best earners first (picking one opens it to edit); then the month's sales and profit, the break-even (at the menu's average drink
  * price), and the prices of the consumables sold.
  */
 export function MenuView({
@@ -47,9 +47,9 @@ export function MenuView({
   const s = menuSummary(month, plant && plantReady)
   const selected = s.drinks.find((d) => d.id === picked) ?? s.drinks[0] ?? null
 
-  const addDrink = () => {
+  const add = (kind: Drink["kind"]) => {
     const id = uid()
-    mutate((m) => void m.menu.drinks.push({ id, name: "", price: "", vat: "", cups: "", recipe: [] }))
+    mutate((m) => void m.menu.drinks.push({ id, kind, name: "", price: "", vat: "", cups: "", recipe: [] }))
     setPicked(id)
   }
 
@@ -57,7 +57,7 @@ export function MenuView({
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="m-0 max-w-[620px] text-sm text-muted-foreground">
-          Each drink&apos;s recipe is priced from your Supplies. Margin is the menu price without VAT, minus what the drink costs to make.
+          Each recipe is priced from your Supplies and Consumables. Margin is the menu price without VAT, minus what the item costs to make.
         </p>
         <div className="flex flex-wrap gap-2.5">
           {plantReady && (
@@ -65,64 +65,68 @@ export function MenuView({
               {plant ? "Showing plant milk prices" : "Show plant milk prices"}
             </Button>
           )}
-          <Button onClick={addDrink}>
-            <Plus />
+          <Button onClick={() => add("drink")}>
+            <Coffee />
             Add a drink
+          </Button>
+          <Button variant="outline" onClick={() => add("food")}>
+            <Croissant />
+            Add food
           </Button>
         </div>
       </div>
 
       {s.drinks.length === 0 ? (
         <Card className="items-start p-7">
-          <CardTitle>No drinks yet</CardTitle>
+          <CardTitle>Nothing on the menu yet</CardTitle>
           <p className="m-0 text-sm text-muted-foreground">
-            Add the drinks you sell, with what goes into each from your Supplies, to see which ones earn you the most.
+            Add the drinks and food you sell, with what goes into each from your Supplies and Consumables, to see which ones earn you the most.
           </p>
         </Card>
       ) : (
         <>
           <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
             <Card className="gap-1">
-              <Eyebrow>{s.withCups ? "Earns you the most a month" : "Biggest margin per cup"}</Eyebrow>
+              <Eyebrow>{s.withCups ? "Earns you the most a month" : "Biggest margin per sale"}</Eyebrow>
               <div className="font-display text-xl font-semibold">{s.best?.name ?? "—"}</div>
               {s.best && (
-                <div className="font-mono text-sm text-good">{s.withCups ? fmt(s.best.monthly) + " a month" : price(s.best.margin) + " a cup"}</div>
+                <div className="font-mono text-sm text-good">{s.withCups ? fmt(s.best.monthly) + " a month" : price(s.best.margin) + " each"}</div>
               )}
             </Card>
             <Card className="gap-1">
-              <Eyebrow>Thinnest margin per cup</Eyebrow>
+              <Eyebrow>Thinnest margin per sale</Eyebrow>
               <div className="font-display text-xl font-semibold">{s.thinnest?.name ?? "—"}</div>
               {s.thinnest && (
                 <div className={cn("font-mono text-sm", s.thinnest.margin < 0 ? "text-destructive" : "text-ink-2")}>
-                  {price(s.thinnest.margin)} a cup ({pct(s.thinnest.marginPct)})
+                  {price(s.thinnest.margin)} each ({pct(s.thinnest.marginPct)})
                 </div>
               )}
             </Card>
             <Card className="gap-1">
-              <Eyebrow>All drinks, a month</Eyebrow>
+              <Eyebrow>Whole menu, a month</Eyebrow>
               {s.withCups ? (
                 <>
                   <div className="font-display text-xl font-semibold">{fmt(s.profit)} kept</div>
                   <div className="font-mono text-sm text-muted-foreground">
-                    {s.cups.toLocaleString("en-GB")} cups · {price(s.perCup)} a cup
+                    {s.cups.toLocaleString("en-GB")} sold · {price(s.perCup)} each
                   </div>
                 </>
               ) : (
-                <div className="text-sm text-muted-foreground">Type in about how many of each drink you sell a month to see this.</div>
+                <div className="text-sm text-muted-foreground">Type in about how many of each item you sell a month to see this.</div>
               )}
             </Card>
           </div>
 
           <div className="flex flex-wrap items-start gap-6">
-            <section aria-label="Drinks, best earners first" className="min-w-0 flex-[3_1_560px] rounded-2xl border bg-card py-2">
+            <section aria-label="Menu, best earners first" className="min-w-0 flex-[3_1_560px] rounded-2xl border bg-card py-2">
               <div className="overflow-x-auto">
                 <div className="flex min-w-[720px] flex-col">
                   <div className={cn(COLUMNS, "border-b border-line px-5 py-2.5 text-xs font-semibold tracking-[0.04em] text-muted-foreground uppercase")}>
-                    <span>Drink</span>
+                    <span>Item</span>
                     <span className="text-right">Cost</span>
                     <span className="text-right">Price</span>
                     <span className="text-right">Margin</span>
-                    <span className="text-right">Cups / mo</span>
+                    <span className="text-right">Sold / mo</span>
                     <span>Kept / month</span>
                   </div>
                   {s.drinks.map((d) => (
@@ -140,7 +144,7 @@ export function MenuView({
                 </div>
               </div>
               <p className="m-0 px-5 pt-3 pb-2 text-[13px] text-muted-foreground">
-                Prices include VAT, at each drink&apos;s rate; cost and margin don&apos;t. Pick a drink to change its recipe and price.
+                Prices include VAT, at each item&apos;s rate; cost and margin don&apos;t. Pick an item to change its recipe and price.
               </p>
             </section>
 
@@ -209,6 +213,7 @@ function DrinkRow({
     >
       <span className="flex min-w-0 flex-col">
         <span className="truncate font-semibold">{d.name}</span>
+        {d.kind === "food" && <span className="text-xs text-muted-foreground">Food</span>}
         {plantNote && <span className="text-xs text-muted-foreground">{plantNote}</span>}
       </span>
       <span className="text-right font-mono">{price(d.cost)}</span>
@@ -234,7 +239,7 @@ function DrinkRow({
   )
 }
 
-/** One drink: its name, price and cups sold, its recipe from Supplies, and what's left of each sale. */
+/** One drink or food item: its name, price and number sold, its recipe from Supplies and Consumables, and what's left of each sale. */
 function DrinkEditor({
   month,
   d,
@@ -253,7 +258,10 @@ function DrinkEditor({
   const drink = month.menu.drinks.find((x) => x.id === d.id)
   if (!drink) return null
   const { target } = menuRates(month)
-  const usable = month.supplies.filter((s) => s.label.trim())
+  const food = d.kind === "food"
+  const supplies = month.supplies.filter((s) => s.label.trim())
+  const consumables = month.consumables.filter((s) => s.label.trim())
+  const usable = [...supplies, ...consumables]
   const set = (fn: (x: Drink) => void) =>
     mutate((m) => {
       const x = m.menu.drinks.find((y) => y.id === d.id)
@@ -263,25 +271,32 @@ function DrinkEditor({
 
   return (
     <aside aria-label={`${d.name}: recipe and price`} className="flex min-w-0 flex-[2_1_400px] flex-col gap-4 rounded-2xl border bg-card p-5">
-      <Field label="Drink">
-        <Input value={drink.name} placeholder="e.g. Cappuccino" maxLength={120} onChange={(e) => set((x) => void (x.name = e.target.value))} />
+      <Field label={food ? "Food" : "Drink"}>
+        <Input value={drink.name} placeholder={food ? "e.g. Croissant" : "e.g. Cappuccino"} maxLength={120} onChange={(e) => set((x) => void (x.name = e.target.value))} />
       </Field>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(112px,1fr))] gap-3">
         <Field label="Menu price, incl. VAT">
           <NumberInput value={drink.price} onChange={(e) => set((x) => void (x.price = e.target.value))} />
         </Field>
-        {/* Blank: the menu's VAT. Take-away and sit-in can be taxed differently, so each drink can set its own. */}
+        {/* Blank: the menu's VAT for its kind. Take-away and sit-in can be taxed differently, so each item can set its own. */}
         <Field label="VAT (%)">
-          <NumberInput value={drink.vat} placeholder={month.menu.vat || "0"} onChange={(e) => set((x) => void (x.vat = e.target.value))} />
+          <NumberInput value={drink.vat} placeholder={(food && month.menu.foodVat.trim()) || month.menu.vat || "0"} onChange={(e) => set((x) => void (x.vat = e.target.value))} />
         </Field>
-        <Field label="Cups sold a month">
+        <Field label={food ? "Sold a month" : "Cups sold a month"}>
           <NumberInput value={drink.cups} placeholder="About how many?" onChange={(e) => set((x) => void (x.cups = e.target.value))} />
         </Field>
       </div>
 
       <div className="flex flex-col gap-2">
-        <Eyebrow>Recipe, per cup{plant && " (with plant milk)"}</Eyebrow>
-        {usable.length === 0 && <p className="m-0 text-sm text-muted-foreground">Add your supplies (beans, milk, cups…) on the Expenses view first.</p>}
+        <Eyebrow>
+          Recipe, per {food ? "item" : "cup"}
+          {plant && " (with plant milk)"}
+        </Eyebrow>
+        {usable.length === 0 && (
+          <p className="m-0 text-sm text-muted-foreground">
+            Add your supplies (beans, milk, cups…) or consumables (pastries…) on the Expenses view first.
+          </p>
+        )}
         {drink.recipe.map((r, i) => {
           const line = d.lines[i]
           return (
@@ -293,13 +308,25 @@ function DrinkEditor({
                   className={selectClass}
                 >
                   <option value="" disabled>
-                    Pick a supply
+                    Pick one
                   </option>
-                  {usable.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.label}
-                    </option>
-                  ))}
+                  {(
+                    [
+                      ["Supplies", supplies],
+                      ["Consumables", consumables],
+                    ] as const
+                  ).map(
+                    ([group, items]) =>
+                      items.length > 0 && (
+                        <optgroup key={group} label={group}>
+                          {items.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      ),
+                  )}
                 </select>
               </Field>
               <Field label={`Amount${line?.unit ? ` (${line.unit})` : ""}`} className="flex-[0_1_96px]">
@@ -374,7 +401,7 @@ function Line({ label, value, muted }: { label: string; value: string; muted?: b
   )
 }
 
-/** The VAT on drinks without their own, the margin suggested prices aim for, and the plant milk option. */
+/** The VAT on drinks and food without their own, the margin suggested prices aim for, and the plant milk option. */
 function MenuSettingsCard({ month, mutate }: { month: MonthData; mutate: Mutate }) {
   const usable = month.supplies.filter((s) => s.label.trim())
   const { plantMilk } = month.menu
@@ -385,6 +412,13 @@ function MenuSettingsCard({ month, mutate }: { month: MonthData; mutate: Mutate 
       <div className="flex flex-wrap gap-4">
         <Field label="Default VAT on drinks (%)" className="flex-[0_1_200px]">
           <NumberInput value={month.menu.vat} onChange={(e) => mutate((m) => void (m.menu.vat = e.target.value))} />
+        </Field>
+        <Field label="Default VAT on food (%)" className="flex-[0_1_200px]">
+          <NumberInput
+            value={month.menu.foodVat}
+            placeholder={month.menu.vat || "0"}
+            onChange={(e) => mutate((m) => void (m.menu.foodVat = e.target.value))}
+          />
         </Field>
         <Field label="Target margin (%)" className="flex-[0_1_160px]">
           <NumberInput value={month.menu.target} onChange={(e) => mutate((m) => void (m.menu.target = e.target.value))} />

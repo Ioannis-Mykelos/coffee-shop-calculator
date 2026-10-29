@@ -28,6 +28,7 @@ export const LIMITS = {
 
 const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
 const COUNTRY = /^[A-Z]{2}$/;
+const DAY = /^([1-9]|[12]\d|3[01])$/;
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const text = (v: unknown, max: number = LIMITS.text) => (typeof v === "string" ? v.slice(0, max) : "");
@@ -50,11 +51,26 @@ function menu(v: unknown): MenuSettings | undefined {
   if (!isRecord(v) || !Array.isArray(v.drinks)) return undefined;
   const plant = isRecord(v.plantMilk) ? v.plantMilk : {};
   return {
-    drinks: list(v.drinks, (x) => ({ id: id(x.id), name: text(x.name), price: amount(x.price), vat: amount(x.vat), cups: amount(x.cups), recipe: recipe(x.recipe) })),
+    drinks: list(v.drinks, (x) => ({
+      id: id(x.id),
+      kind: x.kind === "food" ? ("food" as const) : ("drink" as const),
+      name: text(x.name),
+      price: amount(x.price),
+      vat: amount(x.vat),
+      cups: amount(x.cups),
+      recipe: recipe(x.recipe),
+    })),
     vat: amount(v.vat),
+    foodVat: amount(v.foodVat),
     target: amount(v.target),
     plantMilk: { milkId: id(plant.milkId), plantId: id(plant.plantId), surcharge: amount(plant.surcharge) },
   };
+}
+
+/** Each day's takings, keyed by day of the month; days with nothing typed are dropped. */
+function takings(v: unknown): Record<string, string> {
+  if (!isRecord(v)) return {};
+  return Object.fromEntries(Object.entries(v).filter(([k, x]) => DAY.test(k) && typeof x === "string" && x.trim()).map(([k, x]) => [k, amount(x)]));
 }
 
 /** One month, keeping only known fields of the right type; fields added since it was saved are filled in. */
@@ -81,6 +97,7 @@ export function cleanMonth(v: unknown): MonthData | null {
     coffeesPerCustomer: amount(v.coffeesPerCustomer),
     extrasPerCustomer: amount(v.extrasPerCustomer),
     revenue: amount(v.revenue),
+    takings: takings(v.takings),
     cup: { recipe: recipe(cup.recipe), margin: amount(cup.margin), vat: amount(cup.vat) },
     consumablePricing: { margin: amount(pricing.margin), vat: amount(pricing.vat) },
     menu: menu(v.menu),

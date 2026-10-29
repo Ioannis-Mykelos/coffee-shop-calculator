@@ -8,6 +8,7 @@ import { CategoryTabs } from "@/components/expenses/CategoryTabs"
 import { LineItemsEditor, StaffEditor, SuppliesEditor } from "@/components/expenses/Editors"
 import { LocationBar } from "@/components/expenses/LocationBar"
 import { MenuView } from "@/components/expenses/MenuView"
+import { TakingsView } from "@/components/expenses/TakingsView"
 import { BreakdownCard, HistoryCard, TotalCard } from "@/components/expenses/Sidebar"
 import { WhatIfView } from "@/components/expenses/WhatIfView"
 import { Button } from "@/components/ui/button"
@@ -70,6 +71,7 @@ export function ExpensesApp({ mode, user }: { mode: StoreMode; user?: User }) {
       mm.staff.forEach((x) => (x.count = ""))
       mm.menu.drinks.forEach((x) => (x.cups = ""))
       mm.revenue = ""
+      mm.takings = {}
     })
 
   return (
@@ -101,6 +103,8 @@ export function ExpensesApp({ mode, user }: { mode: StoreMode; user?: User }) {
           <AnalyticsView data={data} month={month} fmt={fmt} currency={state.currency} />
         ) : view === "menu" ? (
           <MenuView month={m} total={totals.total} currency={state.currency} mutate={mutate} fmt={fmt} price={price} />
+        ) : view === "takings" ? (
+          <TakingsView month={m} monthKey={month} total={totals.total} mutate={mutate} fmt={fmt} onView={setView} />
         ) : view === "whatif" ? (
           <WhatIfView key={month} month={m} fmt={fmt} price={price} />
         ) : (
