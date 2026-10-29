@@ -95,7 +95,9 @@ export interface MonthData {
   days: string;
   /** Average drinks per customer; each is sold at the menu's average drink price incl. VAT. */
   coffeesPerCustomer: string;
-  /** Average spend per customer on other consumables (juice, pastries…), incl. VAT. */
+  /** Average food items per customer, each at the menu's average food price; blank works it out from what the menu sells. */
+  foodPerCustomer: string;
+  /** Spend on extras per customer, from before food was on the menu: no longer read. */
   extrasPerCustomer: string;
   /** Actual sales this month, excl. VAT. Blank until the month's takings are known. */
   revenue: string;
@@ -103,7 +105,7 @@ export interface MonthData {
   takings: Record<string, string>;
   /** The single cup recipe from before menus: only read to build a month's first menu (defaultMenu). */
   cup: CupSettings;
-  /** Selling consumables: margin on cost and VAT, both in %. */
+  /** Selling consumables, from before food was on the menu: no longer read. */
   consumablePricing: { margin: string; vat: string };
   menu: MenuSettings;
 }
@@ -220,11 +222,13 @@ export function sampleMonth(): MonthData {
     ],
     days: "30",
     coffeesPerCustomer: "1",
-    extrasPerCustomer: "2",
+    foodPerCustomer: "",
+    extrasPerCustomer: "",
     revenue: "26000",
   };
   const [cups, lids, beans, milk] = m.supplies;
-  const pastries = m.consumables[2];
+  const [juice, pudding, pastries] = m.consumables;
+  const one = (supplyId: string) => [{ id: uid(), supplyId, qty: "1" }];
   const recipe = (milkL: string) => [
     { id: uid(), supplyId: beans.id, qty: "0.018" },
     ...(milkL ? [{ id: uid(), supplyId: milk.id, qty: milkL }] : []),
@@ -237,7 +241,9 @@ export function sampleMonth(): MonthData {
       { id: uid(), kind: "drink", name: "Cappuccino", price: "3.60", vat: "", cups: "1100", recipe: recipe("0.15") },
       { id: uid(), kind: "drink", name: "Caffè latte", price: "3.90", vat: "", cups: "800", recipe: recipe("0.25") },
       { id: uid(), kind: "drink", name: "Flat white", price: "3.80", vat: "", cups: "400", recipe: recipe("0.12") },
-      { id: uid(), kind: "food", name: "Croissant", price: "3.50", vat: "", cups: "500", recipe: [{ id: uid(), supplyId: pastries.id, qty: "1" }] },
+      { id: uid(), kind: "drink", name: "Orange juice", price: "4.00", vat: "", cups: "200", recipe: one(juice.id) },
+      { id: uid(), kind: "food", name: "Croissant", price: "3.50", vat: "", cups: "500", recipe: one(pastries.id) },
+      { id: uid(), kind: "food", name: "Overnight pudding", price: "4.50", vat: "", cups: "150", recipe: one(pudding.id) },
     ],
     vat: "25",
     foodVat: "",
@@ -271,7 +277,7 @@ export function defaultMenu(m: Pick<MonthData, "supplies" | "cup">): MenuSetting
   };
 }
 
-const PLANT_MILK = /oat|soy|almond|plant|coconut|rice/i;
+export const PLANT_MILK = /oat|soy|almond|plant|coconut|rice/i;
 
 /** Typical amounts per cup, matched to supply items by name. */
 const RECIPE_GUESS: [RegExp, Record<string, string>][] = [
@@ -293,8 +299,10 @@ export function defaultCup(supplies: SupplyItem[]): CupSettings {
 }
 
 /** Fill in fields added after a month was saved. */
-export function withDefaults(m: Omit<MonthData, "menu" | "takings"> & { menu?: MenuSettings; takings?: Record<string, string> }): MonthData {
-  const p = m as Partial<MonthData> & Omit<MonthData, "menu" | "takings">;
+export function withDefaults(
+  m: Omit<MonthData, "menu" | "takings" | "foodPerCustomer"> & { menu?: MenuSettings; takings?: Record<string, string>; foodPerCustomer?: string },
+): MonthData {
+  const p = m as Partial<MonthData> & Omit<MonthData, "menu" | "takings" | "foodPerCustomer">;
   const filled: Omit<MonthData, "menu"> = {
     ...p,
     revenue: typeof p.revenue === "string" ? p.revenue : "",
@@ -302,6 +310,7 @@ export function withDefaults(m: Omit<MonthData, "menu" | "takings"> & { menu?: M
     consumables: Array.isArray(p.consumables) ? p.consumables : [],
     consumablePricing: p.consumablePricing ?? { margin: "150", vat: "" },
     coffeesPerCustomer: typeof p.coffeesPerCustomer === "string" ? p.coffeesPerCustomer : "1",
+    foodPerCustomer: typeof p.foodPerCustomer === "string" ? p.foodPerCustomer : "",
     extrasPerCustomer: typeof p.extrasPerCustomer === "string" ? p.extrasPerCustomer : "",
     cup: p.cup && Array.isArray(p.cup.recipe) ? { ...p.cup, vat: p.cup.vat ?? "" } : defaultCup(p.supplies ?? []),
   };
@@ -357,12 +366,12 @@ export function drinkVat(m: Pick<MonthData, "menu">, d: Drink) {
 }
 
 /**
- * The average drink on the menu, with VAT (`price`) and without it at each drink's own rate (`net`): weighted by cups
- * sold when they're known, else the plain average of the drinks with a price.
+ * The average drink (or food item) on the menu, with VAT (`price`) and without it at each item's own rate (`net`):
+ * weighted by the number sold when it's known, else the plain average of the items with a price.
  */
-export function averageDrink(m: Pick<MonthData, "menu">) {
+export function averageDrink(m: Pick<MonthData, "menu">, kind: Drink["kind"] = "drink") {
   const priced = m.menu.drinks
-    .filter((d) => d.kind !== "food")
+    .filter((d) => (d.kind === "food") === (kind === "food"))
     .map((d) => ({ price: num(d.price), net: num(d.price) / (1 + drinkVat(m, d)), cups: Math.max(num(d.cups), 0) }))
     .filter((d) => d.price > 0);
   const cups = priced.reduce((a, d) => a + d.cups, 0);
@@ -379,24 +388,40 @@ export function breakEven(m: MonthData, total: number) {
   const vat = drink.net > 0 ? drink.price / drink.net - 1 : Math.max(num(m.menu.vat), 0) / 100;
   const coffees = num(m.coffeesPerCustomer);
   const coffeeSpend = coffees * cupPrice;
-  const extras = num(m.extrasPerCustomer);
-  const extrasVat = Math.max(num(m.consumablePricing?.vat), 0) / 100;
+  const food = averageDrink(m, "food");
+  // Food per customer: as typed, else what the menu sells: food items per drink, times drinks per customer.
+  const sold = (kind: Drink["kind"]) => m.menu.drinks.filter((d) => (d.kind === "food") === (kind === "food")).reduce((a, d) => a + Math.max(num(d.cups), 0), 0);
+  const drinksSold = sold("drink"), foodSold = sold("food");
+  const foodFromMenu = !isSet(m.foodPerCustomer);
+  const foodItems = foodFromMenu ? (drinksSold > 0 ? (foodSold / drinksSold) * coffees : 0) : Math.max(num(m.foodPerCustomer), 0);
+  const extras = foodItems * food.price;
+  const extrasVat = food.net > 0 ? food.price / food.net - 1 : drinkVat(m, { id: "", kind: "food", name: "", price: "", vat: "", cups: "", recipe: [] });
   /** What one customer pays on average, incl. VAT. */
   const avgGross = coffeeSpend + extras;
-  /** Costs are excl. VAT, so they're covered by the sale minus its VAT (each at its own rate). */
-  const avg = coffeeSpend / (1 + vat) + extras / (1 + extrasVat);
+  /** Costs are excl. VAT, so they're covered by the sale minus its VAT (each item at its own rate). */
+  const avg = coffeeSpend / (1 + vat) + foodItems * food.net;
   return {
     days,
     coffees,
     /** The menu's average drink price, VAT included */
     cupPrice,
     coffeeSpend,
+    /** Food items per customer, and whether they're worked out from what the menu sells */
+    foodItems,
+    foodFromMenu,
+    drinksSold,
+    foodSold,
+    /** The menu's average food price, VAT included */
+    foodPrice: food.price,
+    /** Food spend per customer, VAT included */
     extras,
     avg,
     avgGross,
     vat,
     extrasVat,
     perDay: days > 0 ? total / days : 0,
+    /** What the till must take on an opening day to break even, VAT included */
+    tillPerDay: days > 0 && avg > 0 ? (total / days) * (avgGross / avg) : 0,
     customersMonth: avg > 0 ? Math.ceil(total / avg) : 0,
     customersDay: avg > 0 && days > 0 ? Math.ceil(total / avg / days) : 0,
   };
@@ -431,18 +456,4 @@ export function cupCost(m: Pick<MonthData, "supplies" | "cup">) {
   const price = ingredients * (1 + margin);
   const vat = Math.max(num(m.cup?.vat), 0) / 100;
   return { lines, ingredients, margin, price, profit: price - ingredients, vat, vatAmount: price * vat, priceInclVat: price * (1 + vat) };
-}
-
-/** Selling price of each consumable: its cost plus the margin, then VAT on top. */
-export function consumablePrices(m: MonthData) {
-  const margin = Math.max(num(m.consumablePricing?.margin), 0) / 100;
-  const vat = Math.max(num(m.consumablePricing?.vat), 0) / 100;
-  const items = (m.consumables ?? [])
-    .filter((x) => x.label.trim())
-    .map((x) => {
-      const cost = num(x.price);
-      const price = cost * (1 + margin);
-      return { ...x, cost, profit: price - cost, price, vatAmount: price * vat, priceInclVat: price * (1 + vat) };
-    });
-  return { margin, vat, items };
 }

@@ -95,6 +95,7 @@ export function cleanMonth(v: unknown): MonthData | null {
     })),
     days: amount(v.days),
     coffeesPerCustomer: amount(v.coffeesPerCustomer),
+    foodPerCustomer: amount(v.foodPerCustomer),
     extrasPerCustomer: amount(v.extrasPerCustomer),
     revenue: amount(v.revenue),
     takings: takings(v.takings),

@@ -38,9 +38,11 @@ describe("MenuView", () => {
   it("ranks the drinks by what they earn a month, and names the thinnest margin", () => {
     render(<Harness view="menu" />);
     // Sample café: cappuccino 1,100 cups × 2.13 kept, latte 800 × 2.24, espresso 700 × 1.68, croissant 500 × 2.00, flat white 400 × 2.33
-    const names = ["Cappuccino", "Caffè latte", "Espresso", "Flat white"];
+    const names = ["Cappuccino", "Caffè latte", "Espresso", "Flat white", "Orange juice"];
     expect(rows().map((r) => names.find((n) => r.textContent?.startsWith(n)))).toEqual(names);
-    expect(rows("Food").map((r) => r.textContent?.startsWith("Croissant"))).toEqual([true]);
+    // Croissant 500 × 2.00 a month against the pudding's 150 × 2.70
+    const food = ["Croissant", "Overnight pudding"];
+    expect(rows("Food").map((r) => food.find((n) => r.textContent?.startsWith(n)))).toEqual(food);
     expect(screen.getByText("Thinnest margin per sale").parentElement?.textContent).toContain("Espresso");
   });
 
@@ -74,11 +76,24 @@ describe("MenuView", () => {
     expect(rows().find((r) => r.textContent?.startsWith("Espresso"))?.textContent).toContain("VAT 11%");
   });
 
+  it("sets the target margin for every item from the one being edited", async () => {
+    const user = userEvent.setup();
+    render(<Harness view="menu" />);
+    await user.click(rows()[2]);
+    const field = within(screen.getByRole("complementary", { name: /Espresso/ })).getByLabelText("Target margin, all items (%)");
+    await user.clear(field);
+    await user.type(field, "50");
+    // 0.556 to make ÷ (1 − 50%) × 1.25
+    screen.getByText(`For a 50% margin, charge ${price(1.39).replace(/\s/g, " ")}`);
+    await user.click(rows()[0]);
+    screen.getByText(/For a 50% margin/);
+  });
+
   it("adds a drink and opens it to fill in", async () => {
     const user = userEvent.setup();
     render(<Harness view="menu" />);
     await user.click(screen.getByRole("button", { name: "Add a drink" }));
-    expect(rows()).toHaveLength(5);
+    expect(rows()).toHaveLength(6);
     const editor = screen.getByRole("complementary", { name: /Untitled drink/ });
     await user.type(within(editor).getByLabelText("Drink"), "Mocha");
     screen.getByRole("complementary", { name: /Mocha/ });
@@ -88,26 +103,33 @@ describe("MenuView", () => {
     const user = userEvent.setup();
     render(<Harness view="menu" />);
     screen.getByRole("heading", { name: "Sales & break-even" });
-    // Sample café: (700 × 2.80 + 1,100 × 3.60 + 800 × 3.90 + 400 × 3.80) ÷ 3,000 cups = 3.52
-    const avg = screen.getByText(/your menu's average drink/);
-    expect(avg.textContent).toContain(price(3.52));
+    // Sample café: (700 × 2.80 + 1,100 × 3.60 + 800 × 3.90 + 400 × 3.80 + 200 × 4.00) ÷ 3,200 drinks = 3.55
+    const avg = screen.getByText(/your average drink/);
+    expect(avg.textContent).toContain(price(3.55));
+    // 650 food items for 3,200 drinks, at (500 × 3.50 + 150 × 4.50) ÷ 650
+    expect(screen.getByText(/your average food item/).textContent).toContain(price(2425 / 650));
+    expect((screen.getByLabelText("Food per customer") as HTMLInputElement).placeholder).toBe("0.2");
     await user.click(rows()[0]);
     const field = within(screen.getByRole("complementary", { name: /Cappuccino/ })).getByLabelText("Menu price, incl. VAT");
     await user.clear(field);
     await user.type(field, "4.60");
     // + 1,100 × 1.00 ÷ 3,000 cups
-    expect(screen.getByText(/your menu's average drink/).textContent).toContain(price(3.52 + 1100 / 3000));
+    expect(screen.getByText(/your average drink/).textContent).toContain(price(3.55 + 1100 / 3200));
   });
 
-  it("adds food, made from a consumable, at the food VAT", async () => {
+  it("adds food, made from a consumable, with its own VAT", async () => {
     const user = userEvent.setup();
     render(<Harness view="menu" />);
-    await user.type(screen.getByLabelText("Default VAT on food (%)"), "12");
     await user.click(screen.getByRole("button", { name: "Add food" }));
     let editor = screen.getByRole("complementary", { name: /Untitled food/ });
     await user.type(within(editor).getByLabelText("Food"), "Muffin");
     editor = screen.getByRole("complementary", { name: /Muffin/ });
-    expect((within(editor).getByLabelText("VAT (%)") as HTMLInputElement).placeholder).toBe("12");
+    // A new item starts at the menu's rate, written in to change
+    const vat = within(editor).getByLabelText("VAT (%)") as HTMLInputElement;
+    expect(vat.value).toBe("25");
+    await user.clear(vat);
+    await user.type(vat, "12");
+    editor = screen.getByRole("complementary", { name: /Muffin/ });
     await user.type(within(editor).getByLabelText("Menu price, incl. VAT"), "2.24");
     await user.click(within(editor).getByRole("button", { name: "+ Add ingredient" }));
     editor = screen.getByRole("complementary", { name: /Muffin/ });
@@ -137,7 +159,7 @@ describe("MenuView", () => {
     expect([...pick.querySelectorAll("optgroup")].map((g) => g.label)).toEqual(["Supplies", "Consumables"]);
     await user.click(within(screen.getByRole("complementary", { name: /Orange juice/ })).getByRole("button", { name: "Remove" }));
     expect(screen.queryByRole("complementary", { name: /Orange juice/ })).toBeNull();
-    expect(rows()).toHaveLength(4);
+    expect(rows()).toHaveLength(5);
   });
 
   it("offers plant milk prices once a plant milk is picked", async () => {

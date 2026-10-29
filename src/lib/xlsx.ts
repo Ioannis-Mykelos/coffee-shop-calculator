@@ -6,7 +6,6 @@ import {
   type MonthsData,
   breakEven,
   computeTotals,
-  consumablePrices,
   monthLabel,
   num,
   profitOf,
@@ -14,7 +13,7 @@ import {
   staffLine,
   staffSummary,
 } from "@/lib/expenses";
-import { menuRates, menuSummary } from "@/lib/menu";
+import { menuSummary } from "@/lib/menu";
 import { takingsSummary } from "@/lib/takings";
 
 type CellValue = string | number;
@@ -144,12 +143,14 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
     ["Opening days", be.days],
     ["Drinks per customer", be.coffees],
     ["Average drink price on the menu (incl. VAT)", M(be.cupPrice)],
-    ["Drinks spend per customer (incl. VAT)", M(be.coffeeSpend)],
-    ["Other consumables per customer (incl. VAT)", M(be.extras)],
-    ["Average sale per customer (incl. VAT)", M(be.avgGross)],
     ["Average VAT on drinks", { v: be.vat, s: S_PCT }],
+    ["Food items per customer", be.foodItems],
+    ["Average food price on the menu (incl. VAT)", M(be.foodPrice)],
+    ["Average VAT on food", { v: be.extrasVat, s: S_PCT }],
+    ["Average sale per customer (incl. VAT)", M(be.avgGross)],
     ["Average sale per customer (excl. VAT)", M(be.avg)],
-    ["Cost per opening day", M(be.perDay)],
+    ["Costs per opening day", M(be.perDay)],
+    ["Till target per opening day (incl. VAT)", M(be.tillPerDay)],
     ["Customers needed this month", be.customersMonth],
     ["Customers needed per day", be.customersDay],
     [],
@@ -165,17 +166,7 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
       [],
     );
   }
-  const cp = consumablePrices(m);
-  if (cp.items.length) {
-    sum.push(
-      [H("Consumables pricing"), H("Cost"), H("Excl. VAT"), H("Customer price")],
-      ["Margin on cost", { v: cp.margin, s: S_PCT }],
-      ["VAT", { v: cp.vat, s: S_PCT }],
-    );
-    for (const x of cp.items) sum.push([x.unit ? `${x.label} (per ${x.unit})` : x.label, { v: x.cost, s: S_MONEY }, { v: x.price, s: S_MONEY }, { v: x.priceInclVat, s: S_MONEY_BOLD }]);
-  }
   sum.push(
-    [],
     ["Generated " + new Date().toLocaleString("en-GB")]
   );
 
@@ -205,8 +196,6 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
   mn.push(
     [],
     [B("Whole menu"), "", "", "", "", "", "", "", menu.cups, { v: menu.profit, s: S_MONEY_BOLD }],
-    ["Default VAT on drinks", { v: menuRates(m).vat, s: S_PCT }],
-    ["Default VAT on food", { v: num(m.menu.foodVat.trim() || m.menu.vat) / 100, s: S_PCT }],
   );
 
   const tk = takingsSummary(m, t.total, month);
