@@ -102,6 +102,8 @@ export interface AccountSettings {
   /** When two-step login was turned on (ISO), or null when it's off */
   twoFactorSince: string | null;
   recoveryCodesLeft: number;
+  /** Whether the site offers email + password log in (only when it can send emails) */
+  emailLogin: boolean;
 }
 
 export async function fetchAccountSettings(): Promise<AccountSettings | null> {
@@ -149,7 +151,8 @@ async function postTwoStep<T>(body: unknown): Promise<TwoStepAnswer<T>> {
   }
 }
 
-export const deleteMyAccount = (password: string) => postSettings<'deleted' | 'wrong-password' | 'no-password'>('/api/account/delete', { password });
+/** An account made with Google sends no password: it must have logged in within the last 10 minutes. */
+export const deleteMyAccount = (password?: string) => postSettings<'deleted' | 'wrong-password' | 'login-again'>('/api/account/delete', { password });
 
 /** Whether this session was started with "Keep me logged in" (true if unknown). */
 export async function sessionRemembered() {

@@ -13,6 +13,13 @@ export const authMode = (): AuthMode => (process.env.MONGODB_URI && process.env.
 export const googleEnabled = () => !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
 /**
+ * Email + password log in (with its sign-up, reset and confirmation emails) is offered only when emails can be sent:
+ * EMAIL_SERVER_HOST is set. Without it the site is Google-only, unless Google isn't set up either, so there's always
+ * a way to log in (development then prints the emails to the terminal).
+ */
+export const emailLoginEnabled = () => !!process.env.EMAIL_SERVER_HOST || !googleEnabled();
+
+/**
  * Origin for links in emails, e.g. http://localhost:3000: APP_URL or AUTH_URL when set, else Netlify's URL for the
  * site (URL in production, DEPLOY_PRIME_URL on previews), else localhost. Blank values count as unset.
  */

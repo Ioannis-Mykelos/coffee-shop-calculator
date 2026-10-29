@@ -14,6 +14,7 @@ import {
   EMAIL_COOLDOWN_MS,
   join,
   passwordError,
+  RECENT_LOGIN_MS,
   requestPasswordReset,
   resendVerification,
   RESET_TTL_MS,
@@ -356,11 +357,25 @@ describe('account settings', () => {
   describe('deleteAccount', () => {
     it('needs the password, removes the account and says goodbye', async () => {
       const { deps, store, mail } = await signedIn();
-      expect(await deleteAccount(deps, '1', 'wrong one')).toBe('wrong-password');
+      expect(await deleteAccount(deps, '1', { password: 'wrong one' })).toBe('wrong-password');
+      // A recent log in doesn't stand in for the password of an account that has one.
+      expect(await deleteAccount(deps, '1', { loginAt: deps.now!().getTime() })).toBe('wrong-password');
       expect(store.users).toHaveLength(1);
-      expect(await deleteAccount(deps, '1', ALEX.password)).toBe('deleted');
+      expect(await deleteAccount(deps, '1', { password: ALEX.password })).toBe('deleted');
       expect(store.users).toHaveLength(0);
       expect(mail.at(-1)).toMatchObject({ to: 'alex.morgan@example.com', subject: 'Your Crema account was deleted' });
+    });
+
+    it('deletes a Google account only after a log in from the last 10 minutes', async () => {
+      const { deps, store, user, later } = await signedIn();
+      delete user().passwordHash;
+      const loginAt = deps.now!().getTime();
+      expect(await deleteAccount(deps, '1', {})).toBe('login-again');
+      later(RECENT_LOGIN_MS);
+      expect(await deleteAccount(deps, '1', { loginAt })).toBe('login-again');
+      expect(store.users).toHaveLength(1);
+      expect(await deleteAccount(deps, '1', { loginAt: deps.now!().getTime() - 60_000 })).toBe('deleted');
+      expect(store.users).toHaveLength(0);
     });
 
     it('still deletes when the goodbye email fails', async () => {
@@ -369,7 +384,7 @@ describe('account settings', () => {
       const quiet = console.error;
       console.error = () => {};
       try {
-        expect(await deleteAccount(failing, '1', ALEX.password)).toBe('deleted');
+        expect(await deleteAccount(failing, '1', { password: ALEX.password })).toBe('deleted');
       } finally {
         console.error = quiet;
       }

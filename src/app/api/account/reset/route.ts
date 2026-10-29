@@ -1,11 +1,11 @@
 import { passwordError, resetPassword } from '@/lib/server/accounts';
-import { authMode } from '@/lib/server/config';
+import { authMode, emailLoginEnabled } from '@/lib/server/config';
 import { mongoUserStore } from '@/lib/server/db';
 import { allow, clientIp } from '@/lib/server/rate-limit';
 
 /** Sets a new password with the token from a reset email. Answers `{ result }`, or `{ errors }` for a bad password. */
 export async function POST(req: Request) {
-  if (authMode() !== 'accounts') return new Response(null, { status: 404 });
+  if (authMode() !== 'accounts' || !emailLoginEnabled()) return new Response(null, { status: 404 });
   if (!(await allow(`reset:${clientIp(req.headers)}`, 20, 60 * 60 * 1000))) {
     return Response.json({ error: 'Too many attempts. Try again in an hour.' }, { status: 429 });
   }

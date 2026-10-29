@@ -25,9 +25,9 @@ const LOGIN_ERROR = {
 /**
  * Log in / Sign up. Email + password, with the authenticator app's code as a second step when two-step login is on;
  * Sign up emails a confirmation link; "Forgot password?" emails a reset link to the address typed in. Google leaves
- * for Google's sign-in page and comes back to `next`.
+ * for Google's sign-in page and comes back to `next`. Without `email` (the site can't send emails yet) it's Google only.
  */
-export function LoginPanel({ initialMode, google, next }: { initialMode: LoginMode; google: boolean; next: string }) {
+export function LoginPanel({ initialMode, google, email: emailLogin, next }: { initialMode: LoginMode; google: boolean; email: boolean; next: string }) {
   const [tab, setTab] = useState<LoginMode>(initialMode)
   const [firstName, setFirstName] = useState("")
   const [lastName, setLastName] = useState("")
@@ -104,6 +104,45 @@ export function LoginPanel({ initialMode, google, next }: { initialMode: LoginMo
     setNotice(`If ${trimmed} still needs confirming, a new link is on its way. It works for 24 hours.`)
   }
 
+  const googleButton = (
+    <button
+      type="button"
+      disabled={status !== "idle"}
+      onClick={() => {
+        setStatus("google")
+        void continueWithGoogle(next)
+      }}
+      className="flex min-h-12 w-full cursor-pointer items-center justify-center gap-3 rounded-full border border-espresso/20 bg-white text-[15px] font-semibold text-espresso outline-none hover:bg-oak/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60"
+    >
+      {status === "google" ? (
+        <LoaderCircle aria-hidden="true" className="size-5 animate-spin" />
+      ) : (
+        <Image src="/brand/google-g.svg" alt="" width={20} height={20} unoptimized />
+      )}
+      {status === "google" ? "Connecting to Google…" : isLogin ? "Continue with Google" : "Sign up with Google"}
+    </button>
+  )
+
+  if (!emailLogin) {
+    return (
+      <section aria-labelledby={`${ids}-title`} className="flex flex-col gap-6">
+        <Heading id={`${ids}-title`} isLogin={isLogin} />
+        {googleButton}
+        <p className="m-0 text-center text-[13px] leading-relaxed text-espresso/65">
+          By continuing, you accept the{" "}
+          <Link href="/terms" target="_blank">
+            Terms
+          </Link>{" "}
+          and the{" "}
+          <Link href="/privacy" target="_blank">
+            Privacy Policy
+          </Link>
+          .
+        </p>
+      </section>
+    )
+  }
+
   if (status === "sent" || status === "reset-sent") {
     return (
       <section aria-labelledby={`${ids}-title`} className="flex flex-col items-center gap-4 text-center" aria-live="polite">
@@ -147,14 +186,7 @@ export function LoginPanel({ initialMode, google, next }: { initialMode: LoginMo
 
   return (
     <section aria-labelledby={`${ids}-title`} className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <h1 id={`${ids}-title`} className="m-0 font-serif text-[36px] leading-tight font-medium tracking-[-0.015em]">
-          {isLogin ? "Welcome back" : "Start with Crema"}
-        </h1>
-        <p className="m-0 text-[15px] text-espresso/70">
-          {isLogin ? "Log in to your café's numbers." : "Free during beta. Your first month takes about ten minutes."}
-        </p>
-      </div>
+      <Heading id={`${ids}-title`} isLogin={isLogin} />
 
       <div role="tablist" aria-label="Log in or sign up" className="grid grid-cols-2 gap-1 rounded-full bg-oak/60 p-1">
         {(["login", "join"] as const).map((t) => (
@@ -179,22 +211,7 @@ export function LoginPanel({ initialMode, google, next }: { initialMode: LoginMo
       <div role="tabpanel" id={`${ids}-panel`} aria-labelledby={`${ids}-tab-${tab}`} className="flex flex-col gap-5">
         {google && !codeStep && (
           <>
-            <button
-              type="button"
-              disabled={status !== "idle"}
-              onClick={() => {
-                setStatus("google")
-                void continueWithGoogle(next)
-              }}
-              className="flex min-h-12 w-full cursor-pointer items-center justify-center gap-3 rounded-full border border-espresso/20 bg-white text-[15px] font-semibold text-espresso outline-none hover:bg-oak/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-60"
-            >
-              {status === "google" ? (
-                <LoaderCircle aria-hidden="true" className="size-5 animate-spin" />
-              ) : (
-                <Image src="/brand/google-g.svg" alt="" width={20} height={20} unoptimized />
-              )}
-              {status === "google" ? "Connecting to Google…" : isLogin ? "Continue with Google" : "Sign up with Google"}
-            </button>
+            {googleButton}
             <div className="flex items-center gap-3 text-[13px] text-espresso/55">
               <span className="h-px flex-1 bg-espresso/15" />
               or with email
@@ -326,6 +343,20 @@ export function LoginPanel({ initialMode, google, next }: { initialMode: LoginMo
         </form>
       </div>
     </section>
+  )
+}
+
+/** "Welcome back" for logging in, "Start with Crema" for signing up. */
+function Heading({ id, isLogin }: { id: string; isLogin: boolean }) {
+  return (
+        <div className="flex flex-col gap-2">
+          <h1 id={id} className="m-0 font-serif text-[36px] leading-tight font-medium tracking-[-0.015em]">
+            {isLogin ? "Welcome back" : "Start with Crema"}
+          </h1>
+          <p className="m-0 text-[15px] text-espresso/70">
+            {isLogin ? "Log in to your café's numbers." : "Free during beta. Your first month takes about ten minutes."}
+          </p>
+        </div>
   )
 }
 

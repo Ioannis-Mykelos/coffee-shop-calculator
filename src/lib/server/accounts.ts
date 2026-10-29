@@ -391,15 +391,28 @@ export async function changePassword(deps: Deps, userId: string, current: unknow
   return 'changed';
 }
 
-export type DeleteResult = 'deleted' | 'wrong-password' | 'no-password';
+export type DeleteResult = 'deleted' | 'wrong-password' | 'login-again';
 
-/** Deletes the account and its figures for good. */
-export async function deleteAccount(deps: Deps, userId: string, password: unknown): Promise<DeleteResult> {
-  const check = await reauth(deps, userId, password);
-  if (!check.ok) return check.reason;
+/** How recently an account without a password must have logged in (with Google) to be deleted. */
+export const RECENT_LOGIN_MS = 10 * 60 * 1000;
+
+/**
+ * Deletes the account and its figures for good. An account with a password needs it again; an account made with
+ * Google, which may never get one (no emailed link when the site is Google-only), needs a log in from the last 10
+ * minutes instead (`loginAt`, from the session).
+ */
+export async function deleteAccount(deps: Deps, userId: string, proof: { password?: unknown; loginAt?: number }): Promise<DeleteResult> {
+  const user = await deps.store.findById(userId);
+  if (!user) return 'wrong-password';
+  if (user.passwordHash) {
+    const check = await reauth(deps, userId, proof.password);
+    if (!check.ok) return 'wrong-password';
+  } else if (!(typeof proof.loginAt === 'number' && (deps.now?.() ?? new Date()).getTime() - proof.loginAt < RECENT_LOGIN_MS)) {
+    return 'login-again';
+  }
   await deps.store.remove(userId);
   // The account is gone either way; a failed goodbye email isn't worth an error.
-  await deps.sendMail(deletedMail(check.user.email, check.user.firstName || 'there')).catch((error) => log('error', 'account email failed', { error }));
+  await deps.sendMail(deletedMail(user.email, user.firstName || 'there')).catch((error) => log('error', 'account email failed', { error }));
   return 'deleted';
 }
 
