@@ -26,7 +26,7 @@ export function LocationBar({ location, override, currency, onCountry, onCurrenc
   const currencies = CURRENCIES.includes(currency) ? CURRENCIES : [currency, ...CURRENCIES]
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-2.5 text-sm">
+    <div className="flex min-h-[54px] flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border bg-card px-4 py-2 text-sm">
       <div className="flex flex-wrap items-center gap-2">
         <MapPin aria-hidden="true" className="size-4 text-brand" />
         <span className="text-muted-foreground">Your location</span>

@@ -86,15 +86,17 @@ export function ExpensesApp({ mode, user }: { mode: StoreMode; user?: User }) {
           onNext={() => changeMonth(1)}
           onView={setView}
           onSubmit={submit}
+          toolbar={
+            <LocationBar
+              location={location}
+              override={state.country}
+              currency={state.currency}
+              onCountry={setCountry}
+              onCurrency={setCurrency}
+            />
+          }
         />
         {importOffer && <ImportBanner months={Object.keys(importOffer.data).length} onAnswer={resolveImport} />}
-        <LocationBar
-          location={location}
-          override={state.country}
-          currency={state.currency}
-          onCountry={setCountry}
-          onCurrency={setCurrency}
-        />
 
         {view === "analytics" ? (
           <AnalyticsView data={data} month={month} fmt={fmt} currency={state.currency} />
