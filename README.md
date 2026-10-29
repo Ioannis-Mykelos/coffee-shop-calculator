@@ -41,7 +41,7 @@ Five views: **Expenses** (only costs), **Menu & sales** (prices, sales and break
 - **Expenses**: six cost categories, a tab each with a running total (Rent & premises, Utilities, Supplies, Consumables, Staff, Other), with the month's total, breakdown and history.
 - **Months**: step back and forward; a new month starts as a copy of the one you came from, with sales and daily takings blank.
 - **Menu & sales: drinks and food**: two lists, Drinks and Food, each with its own add button; an item added to the wrong one can be moved, or removed. Every item has its recipe (drinks from the Supplies and Consumables, food from the Consumables), menu price (VAT included), its VAT rate (each item's own: take-away and sit-in can be taxed differently; a new item starts at the menu's rate), and how many sell a month, ranked by what it earns. Cards for the best earner, the thinnest margin and the menu's total; per item, the price that reaches a target margin (one target for the whole menu, set from any item). A month saved before menus gets one drink from its old cup recipe and price.
-- **Menu & sales: sales & profit**: enter the month's takings for the profit or loss, margin, and distance from break-even.
+- **Menu & sales: sales & profit**: the month's sales follow the menu (each item's price without VAT × how many sell) and update as it changes, until the actual takings are typed in; then the profit or loss, margin, and distance from break-even.
 - **Menu & sales: break-even check**: customers needed per month and per day, from drinks and food per customer at the menu's average drink and food prices, each item's VAT taken out. Food per customer is worked out from what the menu sells (food items per drink) unless typed in. Also shows the till target per opening day, VAT included.
 - **Daily takings**: a calendar of the month to type each day's till total into (VAT included), green or red against the daily target: the month's costs over its opening days, with the average VAT on a sale on top. Shows what's taken, what's needed, what each day left must take, the pace, the average by day of the week, and can set the month's sales from the takings without VAT.
 - **What if**: sliders for bean and milk prices, rent, extra staff hours, drink prices and cups sold, plus one-tap scenarios, tried on the month's own figures without saving. Shows profit, costs, sales and break-even before and after, and what would keep today's profit: a price rise in %, or more customers a day.
@@ -165,6 +165,7 @@ The month's calculations live in [`src/lib/expenses.ts`](src/lib/expenses.ts), t
 | Average sale, excl. VAT | drinks × average drink price without VAT + food × average food price without VAT |
 | Till target per opening day | month total ÷ opening days × average sale incl. VAT ÷ excl. VAT |
 | Customers needed per month / day | ⌈ month total ÷ average sale ⌉, then ÷ opening days |
+| Sales | takings typed in, else Σ menu price ÷ (1 + the item's VAT) × number sold a month |
 | Profit | sales (excl. VAT) − month total |
 | Margin (Menu) | menu price ÷ (1 + the item's VAT, else the menu's for its kind) − Σ recipe amount × the supply's or consumable's price per unit |
 | Price for the target margin | cost ÷ (1 − target %) × (1 + VAT) |

@@ -208,7 +208,7 @@ export function TakingsView({
               <CardTitle>Month&apos;s sales</CardTitle>
               <p className="m-0 text-sm text-muted-foreground">
                 Without VAT, your takings so far come to about {fmt(sales)}. Profit on Menu &amp; sales uses the month&apos;s sales
-                {String(month.revenue).trim() ? `, now ${fmt(num(month.revenue))}` : ", not typed in yet"}.
+                {String(month.revenue).trim() ? `, now ${fmt(num(month.revenue))}` : ", now worked out from your menu"}.
               </p>
               <Button
                 variant="outline"

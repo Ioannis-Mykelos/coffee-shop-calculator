@@ -159,7 +159,7 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
   if (p) {
     sum.push(
       [H("Sales & profit"), H("")],
-      ["Actual sales (excl. VAT)", M(p.revenue)],
+      [p.source === "menu" ? "Sales worked out from the menu (excl. VAT)" : "Actual sales (excl. VAT)", M(p.revenue)],
       ["Expenses", M(t.total)],
       [B(p.profit < 0 ? "Loss" : "Profit"), { v: p.profit, s: S_MONEY_BOLD }],
       ["Profit margin", { v: p.margin, s: S_PCT }],

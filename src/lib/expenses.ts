@@ -419,10 +419,20 @@ export function breakEven(m: MonthData, total: number) {
   };
 }
 
-/** Profit or loss once the month's actual sales are entered; null while sales are blank. */
+/** What the menu sells a month, VAT excluded: each item's price without its own VAT, times how many sell. */
+export function menuSales(m: Pick<MonthData, "menu">) {
+  return m.menu.drinks.reduce((a, d) => a + (num(d.price) / (1 + drinkVat(m, d))) * Math.max(num(d.cups), 0), 0);
+}
+
+/**
+ * Profit or loss on the month's sales: the takings typed in, else what the menu sells (its prices × how many of each
+ * sell). Null while there's neither.
+ */
 export function profitOf(m: MonthData, total: number) {
-  if (!String(m.revenue ?? "").trim()) return null;
-  const revenue = num(m.revenue);
+  const typed = isSet(m.revenue);
+  const fromMenu = menuSales(m);
+  if (!typed && fromMenu <= 0) return null;
+  const revenue = typed ? num(m.revenue) : fromMenu;
   const profit = revenue - total;
   const be = breakEven(m, total);
   const customersDay = be.avg > 0 && be.days > 0 ? revenue / be.avg / be.days : 0;
@@ -434,6 +444,10 @@ export function profitOf(m: MonthData, total: number) {
     coverage: total > 0 ? revenue / total : 0,
     customersDay,
     customersNeededDay: be.customersDay,
+    /** Where the sales come from: typed in, or worked out from the menu */
+    source: typed ? ("typed" as const) : ("menu" as const),
+    /** What the menu sells a month, VAT excluded (0 without numbers sold) */
+    menuSales: fromMenu,
   };
 }
 
