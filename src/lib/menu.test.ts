@@ -10,6 +10,7 @@ const supplies = [
 ];
 const latte: Drink = {
   id: "latte",
+  kind: "drink",
   name: "Latte",
   price: "5.00",
   vat: "",
@@ -22,6 +23,7 @@ const latte: Drink = {
 };
 const espresso: Drink = {
   id: "espresso",
+  kind: "drink",
   name: "Espresso",
   price: "2.50",
   vat: "",
@@ -46,7 +48,7 @@ function month(drinks: Drink[] = [latte, espresso], plantMilk = { milkId: "m", p
     revenue: "",
     cup: { recipe: [], margin: "0", vat: "" },
     consumablePricing: { margin: "0", vat: "" },
-    menu: { drinks, vat: "25", target: "60", plantMilk },
+    menu: { drinks, vat: "25", foodVat: "", target: "60", plantMilk },
   });
 }
 
@@ -87,6 +89,21 @@ describe("drinkFigures", () => {
     expect(plantMilkReady(month(undefined, { milkId: "m", plantId: "", surcharge: "" }))).toBe(false);
     expect(plantMilkReady(month(undefined, { milkId: "m", plantId: "gone", surcharge: "" }))).toBe(false);
     expect(drinkFigures(month(undefined, { milkId: "m", plantId: "", surcharge: "1" }), latte, true).price).toBe(5);
+  });
+});
+
+describe("food", () => {
+  it("is made from Consumables, at the food VAT", () => {
+    const croissant: Drink = { id: "f", kind: "food", name: "", price: "3.36", vat: "", cups: "50", recipe: [{ id: "r", supplyId: "p", qty: "1" }] };
+    const m = { ...month([latte, croissant]), consumables: [{ id: "p", label: "Pastries", qty: "", unit: "pcs", price: "0.80" }] };
+    m.menu.foodVat = "12";
+    const d = drinkFigures(m, croissant);
+    expect(d).toMatchObject({ kind: "food", name: "Untitled food", cost: 0.8 });
+    expect(d.lines[0].label).toBe("Pastries");
+    expect(d.net).toBeCloseTo(3); // 3.36 ÷ 1.12
+    expect(d.monthly).toBeCloseTo(110);
+    // Ranked with the drinks: the latte keeps 330 a month
+    expect(menuSummary(m).drinks.map((x) => x.id)).toEqual(["latte", "f"]);
   });
 });
 

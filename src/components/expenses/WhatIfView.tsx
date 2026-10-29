@@ -192,12 +192,12 @@ function Advice({
       <div className={cn(box, "border bg-card")}>
         <span className="font-display text-lg font-semibold">See the effect on profit</span>
         <span className="text-[15px] text-muted-foreground">
-          On Menu &amp; sales, type in this month&apos;s takings, or about how many of each drink you sell.
+          On Menu &amp; sales, type in this month&apos;s takings, or about how many of each item on your menu you sell.
         </span>
       </div>
     )
   }
-  const source = r.salesSource === "takings" ? "this month's takings" : "the cups sold on your menu"
+  const source = r.salesSource === "takings" ? "this month's takings" : "what your menu sells a month"
   if (r.keep && r.before.profit !== null) {
     const { pricePct, customersDay } = r.keep
     return (

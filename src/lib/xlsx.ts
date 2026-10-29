@@ -15,6 +15,7 @@ import {
   staffSummary,
 } from "@/lib/expenses";
 import { menuRates, menuSummary } from "@/lib/menu";
+import { takingsSummary } from "@/lib/takings";
 
 type CellValue = string | number;
 type Cell = CellValue | { v: CellValue; s?: number } | null | undefined;
@@ -198,9 +199,29 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
   st.push([], [B("Total staff cost"), "", ft + pt, "", "", "", "", "", { v: t.staff, s: S_MONEY_BOLD }]);
 
   const menu = menuSummary(m);
-  const mn: Row[] = [[H("Drink"), H("Cost to make"), H("Menu price (incl. VAT)"), H("VAT"), H("Price (excl. VAT)"), H("Margin per cup"), H("Margin"), H("Cups a month"), H("Kept a month")]];
-  for (const d of menu.drinks) mn.push([d.name, M(d.cost), M(d.price), { v: d.vat, s: S_PCT }, M(d.net), M(d.margin), { v: d.marginPct, s: S_PCT }, d.cups, M(d.monthly)]);
-  mn.push([], [B("All drinks"), "", "", "", "", "", "", menu.cups, { v: menu.profit, s: S_MONEY_BOLD }], ["Default VAT on drinks", { v: menuRates(m).vat, s: S_PCT }]);
+  const mn: Row[] = [[H("Item"), H("Kind"), H("Cost to make"), H("Menu price (incl. VAT)"), H("VAT"), H("Price (excl. VAT)"), H("Margin each"), H("Margin"), H("Sold a month"), H("Kept a month")]];
+  for (const d of menu.drinks)
+    mn.push([d.name, d.kind === "food" ? "Food" : "Drink", M(d.cost), M(d.price), { v: d.vat, s: S_PCT }, M(d.net), M(d.margin), { v: d.marginPct, s: S_PCT }, d.cups, M(d.monthly)]);
+  mn.push(
+    [],
+    [B("Whole menu"), "", "", "", "", "", "", "", menu.cups, { v: menu.profit, s: S_MONEY_BOLD }],
+    ["Default VAT on drinks", { v: menuRates(m).vat, s: S_PCT }],
+    ["Default VAT on food", { v: num(m.menu.foodVat.trim() || m.menu.vat) / 100, s: S_PCT }],
+  );
+
+  const tk = takingsSummary(m, t.total, month);
+  const da: Row[] = [[H("Day"), H("Weekday"), H("Takings (incl. VAT)"), H("Daily target"), H("Over or under")]];
+  for (const d of tk.days.filter((x) => x.logged)) {
+    const date = new Date(+month.slice(0, 4), +month.slice(5) - 1, d.day);
+    da.push([date.toLocaleDateString("en-GB"), date.toLocaleDateString("en-GB", { weekday: "long" }), M(d.amount), M(tk.target), M(d.amount - tk.target)]);
+  }
+  da.push(
+    [],
+    [B("Taken so far (incl. VAT)"), "", { v: tk.taken, s: S_MONEY_BOLD }],
+    ["Needed this month (incl. VAT)", "", M(tk.needed)],
+    ["Still needed", "", M(tk.short)],
+    ["Average VAT on a sale", "", { v: tk.vat, s: S_PCT }],
+  );
 
   const hi: Row[] = [[H("Month"), ...CATEGORIES.map((c) => H(c.label)), H("Total"), H("Sales"), H("Profit")]];
   for (const key of Object.keys(data).sort()) {
@@ -219,7 +240,8 @@ export function buildXlsx(data: MonthsData, month: string, cur: Currency) {
     ["Summary", sum, [42, 18, 16, 16]],
     ["Expenses", ex, [18, 30, 12, 10, 16, 16]],
     ["Staff", st, [24, 12, 12, 16, 14, 24, 20, 24, 18]],
-    ["Menu", mn, [24, 14, 22, 8, 18, 16, 10, 14, 16]],
+    ["Menu", mn, [24, 8, 14, 22, 8, 18, 14, 10, 14, 16]],
+    ...(tk.logged ? [["Daily takings", da, [30, 14, 20, 16, 16]] as [string, Row[], number[]]] : []),
     ["History", hi, [20, 18, 14, 14, 14, 14, 14, 16, 16, 16]],
   ];
   const NS = "http://schemas.openxmlformats.org/";

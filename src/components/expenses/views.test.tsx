@@ -4,14 +4,16 @@ import { useState } from "react";
 import { describe, expect, it } from "vitest";
 
 import { type MonthData, computeTotals, currencyFormatter, priceFormatter, sampleMonth } from "@/lib/expenses";
+import { takingsSummary } from "@/lib/takings";
 import { MenuView } from "./MenuView";
+import { TakingsView } from "./TakingsView";
 import { WhatIfView } from "./WhatIfView";
 
 const fmt = currencyFormatter("EUR");
 const price = priceFormatter("EUR");
 
 /** A view over the sample café, with edits applied the way the store applies them. */
-function Harness({ view, start = sampleMonth() }: { view: "menu" | "whatif"; start?: MonthData }) {
+function Harness({ view, start = sampleMonth() }: { view: "menu" | "takings" | "whatif"; start?: MonthData }) {
   const [m, setM] = useState(start);
   const mutate = (fn: (m: MonthData) => void) =>
     setM((prev) => {
@@ -21,21 +23,23 @@ function Harness({ view, start = sampleMonth() }: { view: "menu" | "whatif"; sta
     });
   return view === "menu" ? (
     <MenuView month={m} total={computeTotals(m).total} currency="EUR" mutate={mutate} fmt={fmt} price={price} />
+  ) : view === "takings" ? (
+    <TakingsView month={m} monthKey="2026-10" total={computeTotals(m).total} mutate={mutate} fmt={fmt} onView={() => {}} />
   ) : (
     <WhatIfView month={m} fmt={fmt} price={price} />
   );
 }
 
-const rows = () => within(screen.getByRole("region", { name: "Drinks, best earners first" })).getAllByRole("button");
+const rows = () => within(screen.getByRole("region", { name: "Menu, best earners first" })).getAllByRole("button");
 const kept = (editor: HTMLElement) => within(editor).getByText(/You keep/).parentElement?.textContent;
 
 describe("MenuView", () => {
   it("ranks the drinks by what they earn a month, and names the thinnest margin", () => {
     render(<Harness view="menu" />);
-    // Sample café: cappuccino 1,100 cups × 2.13 kept, latte 800 × 2.24, espresso 700 × 1.68, flat white 400 × 2.33
-    const names = ["Cappuccino", "Caffè latte", "Espresso", "Flat white"];
+    // Sample café: cappuccino 1,100 cups × 2.13 kept, latte 800 × 2.24, espresso 700 × 1.68, croissant 500 × 2.00, flat white 400 × 2.33
+    const names = ["Cappuccino", "Caffè latte", "Espresso", "Croissant", "Flat white"];
     expect(rows().map((r) => names.find((n) => r.textContent?.startsWith(n)))).toEqual(names);
-    expect(screen.getByText("Thinnest margin per cup").parentElement?.textContent).toContain("Espresso");
+    expect(screen.getByText("Thinnest margin per sale").parentElement?.textContent).toContain("Espresso");
   });
 
   it("opens a drink's recipe, and re-prices it as the price changes", async () => {
@@ -72,7 +76,7 @@ describe("MenuView", () => {
     const user = userEvent.setup();
     render(<Harness view="menu" />);
     await user.click(screen.getByRole("button", { name: "Add a drink" }));
-    expect(rows()).toHaveLength(5);
+    expect(rows()).toHaveLength(6);
     const editor = screen.getByRole("complementary", { name: /Untitled drink/ });
     await user.type(within(editor).getByLabelText("Drink"), "Mocha");
     screen.getByRole("complementary", { name: /Mocha/ });
@@ -93,6 +97,27 @@ describe("MenuView", () => {
     expect(screen.getByText(/your menu's average drink/).textContent).toContain(price(3.52 + 1100 / 3000));
   });
 
+  it("adds food, made from a consumable, at the food VAT", async () => {
+    const user = userEvent.setup();
+    render(<Harness view="menu" />);
+    await user.type(screen.getByLabelText("Default VAT on food (%)"), "12");
+    await user.click(screen.getByRole("button", { name: "Add food" }));
+    let editor = screen.getByRole("complementary", { name: /Untitled food/ });
+    await user.type(within(editor).getByLabelText("Food"), "Muffin");
+    editor = screen.getByRole("complementary", { name: /Muffin/ });
+    expect((within(editor).getByLabelText("VAT (%)") as HTMLInputElement).placeholder).toBe("12");
+    await user.type(within(editor).getByLabelText("Menu price, incl. VAT"), "2.24");
+    await user.click(within(editor).getByRole("button", { name: "+ Add ingredient" }));
+    editor = screen.getByRole("complementary", { name: /Muffin/ });
+    const pick = within(editor).getByLabelText("Ingredient") as HTMLSelectElement;
+    expect([...pick.querySelectorAll("optgroup")].map((g) => g.label)).toEqual(["Supplies", "Consumables"]);
+    await user.selectOptions(pick, within(pick).getByRole("option", { name: "Pastries" }));
+    await user.type(within(screen.getByRole("complementary", { name: /Muffin/ })).getByLabelText(/^Amount/), "1");
+    // 2.24 ÷ 1.12 − 0.80
+    expect(kept(screen.getByRole("complementary", { name: /Muffin/ }))).toContain(price(1.2));
+    expect(rows().find((r) => r.textContent?.startsWith("Muffin"))?.textContent).toContain("Food");
+  });
+
   it("offers plant milk prices once a plant milk is picked", async () => {
     const user = userEvent.setup();
     const start = sampleMonth();
@@ -104,6 +129,28 @@ describe("MenuView", () => {
     await user.click(screen.getByRole("button", { name: "Show plant milk prices" }));
     expect(screen.getByRole("button", { name: "Showing plant milk prices" }).getAttribute("aria-pressed")).toBe("true");
     expect(rows().find((r) => r.textContent?.startsWith("Cappuccino"))?.textContent).toContain(`plant milk +${price(0.4)}`);
+  });
+});
+
+describe("TakingsView", () => {
+  it("colours each day against the daily target and says what's still needed", async () => {
+    const user = userEvent.setup();
+    const start = sampleMonth();
+    const total = computeTotals(start).total;
+    const { target, needed } = takingsSummary(start, total, "2026-10");
+    render(<Harness view="takings" start={start} />);
+    const day = (label: RegExp) => screen.getByLabelText(label) as HTMLInputElement;
+    await user.type(day(/^1 1 October/), String(Math.ceil(target)));
+    await user.type(day(/^2 2 October/), "100");
+    expect(day(/^1 1 October/).closest("label")?.className).toContain("text-good");
+    expect(day(/^2 2 October/).closest("label")?.className).toContain("text-destructive");
+    const taken = Math.ceil(target) + 100;
+    expect(screen.getByText("Taken so far").parentElement?.textContent).toContain(fmt(taken));
+    // The sample opens 30 days: 28 left
+    expect(screen.getByText("Needed per day from here").parentElement?.textContent).toContain(fmt((needed - taken) / 28));
+    const use = screen.getByRole("button", { name: /as this month's sales/ });
+    await user.click(use);
+    expect((screen.getByRole("button", { name: /as this month's sales/ }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
 

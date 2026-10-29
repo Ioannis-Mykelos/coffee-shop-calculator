@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import {
+  CalendarDays,
   Calculator,
   ChartColumn,
   ChevronDown,
@@ -24,12 +25,13 @@ import type { SaveStatus } from "@/hooks/useExpensesStore"
 import { type User, logOut } from "@/lib/auth-client"
 import { cn } from "@/lib/utils"
 
-export type View = "calc" | "menu" | "whatif" | "analytics"
+export type View = "calc" | "menu" | "takings" | "whatif" | "analytics"
 
-/** The four views, with each one's heading and the line under it. */
+/** The views, with each one's heading and the line under it. */
 const VIEWS: { key: View; label: string; Icon: typeof Calculator; title: string; sub: (month: string) => string }[] = [
   { key: "calc", label: "Expenses", Icon: Calculator, title: "Monthly expenses", sub: (m) => `What it costs to run the café in ${m}` },
-  { key: "menu", label: "Menu & sales", Icon: Coffee, title: "Menu & sales", sub: (m) => `Drink prices and margins, sales and break-even for ${m}` },
+  { key: "menu", label: "Menu & sales", Icon: Coffee, title: "Menu & sales", sub: (m) => `Prices and margins on drinks and food, sales and break-even for ${m}` },
+  { key: "takings", label: "Daily takings", Icon: CalendarDays, title: "Daily takings", sub: (m) => `Each day's till against what ${m} needs to break even` },
   { key: "whatif", label: "What if", Icon: SlidersHorizontal, title: "What if…", sub: (m) => `Try a change on ${m}'s figures before it happens` },
   { key: "analytics", label: "Analytics", Icon: ChartColumn, title: "Analytics", sub: () => "Your months side by side" },
 ]
