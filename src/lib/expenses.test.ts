@@ -5,6 +5,7 @@ import {
   computeTotals,
   cupCost,
   drinkVat,
+  menuSales,
   type MonthData,
   monthKey,
   num,
@@ -210,7 +211,15 @@ describe("break-even and profit", () => {
     expect(be.tillPerDay).toBeCloseTo(488);
   });
 
-  it("has no profit until sales are entered", () => {
+  it("takes sales from the menu until takings are typed in", () => {
+    const selling = { ...m, menu: { ...m.menu, drinks: [{ ...m.menu.drinks[0], cups: "4000" }, { ...snack, cups: "1100" }] } };
+    // 4,000 drinks at 2.00 and 1,100 snacks at 1.00, without VAT
+    expect(menuSales(selling)).toBeCloseTo(9100);
+    expect(profitOf(selling, 10_000)).toMatchObject({ source: "menu", revenue: expect.closeTo(9100), profit: expect.closeTo(-900) });
+    expect(profitOf({ ...selling, revenue: "12500" }, 10_000)).toMatchObject({ source: "typed", revenue: 12500, menuSales: expect.closeTo(9100) });
+  });
+
+  it("has no profit until sales are entered or the menu says what sells", () => {
     expect(profitOf(m, 10_000)).toBeNull();
     const p = profitOf({ ...m, revenue: "12,500" }, 10_000)!;
     expect(p.profit).toBe(2500);

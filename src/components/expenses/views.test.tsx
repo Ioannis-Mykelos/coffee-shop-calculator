@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 
-import { type MonthData, computeTotals, currencyFormatter, priceFormatter, sampleMonth } from "@/lib/expenses";
+import { type MonthData, computeTotals, currencyFormatter, menuSales, priceFormatter, sampleMonth } from "@/lib/expenses";
 import { takingsSummary } from "@/lib/takings";
 import { MenuView } from "./MenuView";
 import { TakingsView } from "./TakingsView";
@@ -87,6 +87,30 @@ describe("MenuView", () => {
     screen.getByText(`For a 50% margin, charge ${price(1.39).replace(/\s/g, " ")}`);
     await user.click(rows()[0]);
     screen.getByText(/For a 50% margin/);
+  });
+
+  it("fills in the month's sales from the menu, and keeps them up to date until takings are typed", async () => {
+    const user = userEvent.setup();
+    const start = sampleMonth();
+    start.revenue = "";
+    render(<Harness view="menu" start={start} />);
+    const salesRow = () => screen.getByText("Sales", { selector: "span" }).parentElement?.textContent;
+    const field = () => screen.getByLabelText("Sales this month, excl. VAT") as HTMLInputElement;
+    expect(field().value).toBe("");
+    expect(field().placeholder).toBe(String(Math.round(menuSales(start))));
+    expect(salesRow()).toContain(fmt(menuSales(start)));
+    // 100 more espressos at 2.80 incl. 25% VAT
+    await user.click(rows()[2]);
+    const cups = within(screen.getByRole("complementary", { name: /Espresso/ })).getByLabelText("Cups sold a month");
+    await user.clear(cups);
+    await user.type(cups, "800");
+    expect(salesRow()).toContain(fmt(menuSales(start) + 100 * 2.24));
+    // Typed takings win, and the menu's figure can be brought back
+    await user.type(field(), "30000");
+    expect(salesRow()).toContain(fmt(30000));
+    await user.click(screen.getByRole("button", { name: "Use the menu's figure" }));
+    expect(field().value).toBe("");
+    expect(salesRow()).toContain(fmt(menuSales(start) + 100 * 2.24));
   });
 
   it("adds a drink and opens it to fill in", async () => {
