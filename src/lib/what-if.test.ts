@@ -23,7 +23,7 @@ function month(patch: Partial<MonthData> = {}): MonthData {
     cup: { recipe: [{ id: "r", supplyId: "b", qty: "0.02" }, { id: "r2", supplyId: "c", qty: "1" }], margin: "300", vat: "25" },
     consumablePricing: { margin: "0", vat: "" },
     menu: {
-      drinks: [{ id: "e", name: "Espresso", price: "2.50", cups: "1500", recipe: [] }],
+      drinks: [{ id: "e", name: "Espresso", price: "2.50", vat: "", cups: "1500", recipe: [] }],
       vat: "25",
       target: "70",
       plantMilk: { milkId: "", plantId: "", surcharge: "" },

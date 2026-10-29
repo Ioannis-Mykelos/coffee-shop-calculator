@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  averageDrinkPrice,
+  averageDrink,
   breakEven,
   computeTotals,
   consumablePrices,
@@ -159,8 +159,22 @@ describe("break-even and profit", () => {
     // With cups sold, the average is weighted by them; without, it's the plain average.
     const two = (cups: [string, string]) =>
       month({ menu: { ...m.menu, drinks: [{ ...m.menu.drinks[0], price: "2", cups: cups[0] }, { ...m.menu.drinks[0], id: "b", price: "4", cups: cups[1] }] } });
-    expect(averageDrinkPrice(two(["300", "100"]))).toBeCloseTo(2.5);
-    expect(averageDrinkPrice(two(["", ""]))).toBeCloseTo(3);
+    expect(averageDrink(two(["300", "100"])).price).toBeCloseTo(2.5);
+    expect(averageDrink(two(["", ""])).price).toBeCloseTo(3);
+  });
+
+  it("takes each drink's own VAT out: take-away and sit-in at different rates", () => {
+    const drinks = [
+      { ...m.menu.drinks[0], price: "2.22", vat: "11", cups: "100" }, // 2.00 without VAT
+      { ...m.menu.drinks[0], id: "b", price: "2.50", vat: "", cups: "100" }, // the menu's 25%: 2.00
+    ];
+    const mixed = { ...m, menu: { ...m.menu, drinks } };
+    expect(averageDrink(mixed)).toEqual({ price: expect.closeTo(2.36), net: expect.closeTo(2) });
+    const be = breakEven(mixed, 10_000);
+    // Two drinks at 2.00 without VAT, and 1.10 of extras incl. 10% VAT: 5.00 a customer, as for the single cup.
+    expect(be.avg).toBeCloseTo(5);
+    expect(be.vat).toBeCloseTo(0.18);
+    expect(be.customersDay).toBe(80);
   });
 
   it("takes VAT out of each part of the sale at its own rate", () => {

@@ -1,7 +1,8 @@
 // The drinks menu: what each drink costs to make (its recipe, priced from Supplies), what it earns per cup and per
-// month, and the price that would reach the owner's target margin. Menu prices include VAT; margins don't.
+// month, and the price that would reach the owner's target margin. Menu prices include VAT (each drink's own rate, or
+// the menu's); margins don't.
 
-import { type Drink, type MonthData, num } from "./expenses";
+import { type Drink, type MonthData, drinkVat, num } from "./expenses";
 
 export interface DrinkFigures {
   id: string;
@@ -11,6 +12,8 @@ export interface DrinkFigures {
   cost: number;
   /** Menu price, VAT included */
   price: number;
+  /** VAT as a fraction: the drink's own, or the menu's */
+  vat: number;
   /** Price without VAT */
   net: number;
   /** What one cup leaves after VAT and ingredients */
@@ -26,7 +29,7 @@ export interface DrinkFigures {
   hasMilk: boolean;
 }
 
-/** VAT and target margin as fractions. */
+/** The menu's VAT (for drinks without their own) and the target margin, as fractions. */
 export function menuRates(m: MonthData) {
   return {
     vat: Math.max(num(m.menu.vat), 0) / 100,
@@ -42,7 +45,8 @@ export function plantMilkReady(m: MonthData) {
 
 /** One drink's figures; with `plant`, made with plant milk and priced with its surcharge. */
 export function drinkFigures(m: MonthData, d: Drink, plant = false): DrinkFigures {
-  const { vat, target } = menuRates(m);
+  const { target } = menuRates(m);
+  const vat = drinkVat(m, d);
   const { milkId, plantId, surcharge } = m.menu.plantMilk;
   const hasMilk = plantMilkReady(m) && d.recipe.some((r) => r.supplyId === milkId);
   const swap = plant && hasMilk;
@@ -63,6 +67,7 @@ export function drinkFigures(m: MonthData, d: Drink, plant = false): DrinkFigure
     lines,
     cost,
     price,
+    vat,
     net,
     margin,
     marginPct: net > 0 ? margin / net : 0,

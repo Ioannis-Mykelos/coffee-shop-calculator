@@ -58,7 +58,15 @@ export interface CupSettings {
 }
 
 /** A drink on the menu: its recipe from Supplies, its menu price (VAT included) and how many sell a month. */
-export interface Drink { id: string; name: string; price: string; cups: string; recipe: RecipeItem[] }
+export interface Drink {
+  id: string;
+  name: string;
+  price: string;
+  /** This drink's VAT in %, or blank for the menu's */
+  vat: string;
+  cups: string;
+  recipe: RecipeItem[];
+}
 export interface MenuSettings {
   drinks: Drink[];
   /** VAT on drinks, in %. Menu prices include it. */
@@ -215,10 +223,10 @@ export function sampleMonth(): MonthData {
   ];
   const menu: MenuSettings = {
     drinks: [
-      { id: uid(), name: "Espresso", price: "2.80", cups: "700", recipe: recipe("") },
-      { id: uid(), name: "Cappuccino", price: "3.60", cups: "1100", recipe: recipe("0.15") },
-      { id: uid(), name: "Caffè latte", price: "3.90", cups: "800", recipe: recipe("0.25") },
-      { id: uid(), name: "Flat white", price: "3.80", cups: "400", recipe: recipe("0.12") },
+      { id: uid(), name: "Espresso", price: "2.80", vat: "", cups: "700", recipe: recipe("") },
+      { id: uid(), name: "Cappuccino", price: "3.60", vat: "", cups: "1100", recipe: recipe("0.15") },
+      { id: uid(), name: "Caffè latte", price: "3.90", vat: "", cups: "800", recipe: recipe("0.25") },
+      { id: uid(), name: "Flat white", price: "3.80", vat: "", cups: "400", recipe: recipe("0.12") },
     ],
     vat: "25",
     target: "70",
@@ -238,6 +246,7 @@ export function defaultMenu(m: Omit<MonthData, "menu">): MenuSettings {
         id: uid(),
         name: "Coffee",
         price: c.priceInclVat > 0 ? c.priceInclVat.toFixed(2) : "",
+        vat: "",
         cups: "",
         recipe: m.cup.recipe.map((r) => ({ ...r, id: uid() })),
       },
@@ -318,21 +327,31 @@ export function staffSummary(m: MonthData) {
   return { ft, pt, hours };
 }
 
+/** A drink's VAT as a fraction: its own rate when it has one (take-away and sit-in can differ), else the menu's. */
+export function drinkVat(m: Pick<MonthData, "menu">, d: Drink) {
+  return Math.max(num(String(d.vat ?? "").trim() ? d.vat : m.menu.vat), 0) / 100;
+}
+
 /**
- * The average drink on the menu, VAT included: weighted by cups sold when they're known, else the plain average of
- * the drinks with a price.
+ * The average drink on the menu, with VAT (`price`) and without it at each drink's own rate (`net`): weighted by cups
+ * sold when they're known, else the plain average of the drinks with a price.
  */
-export function averageDrinkPrice(m: Pick<MonthData, "menu">) {
-  const priced = m.menu.drinks.map((d) => ({ price: num(d.price), cups: Math.max(num(d.cups), 0) })).filter((d) => d.price > 0);
+export function averageDrink(m: Pick<MonthData, "menu">) {
+  const priced = m.menu.drinks
+    .map((d) => ({ price: num(d.price), net: num(d.price) / (1 + drinkVat(m, d)), cups: Math.max(num(d.cups), 0) }))
+    .filter((d) => d.price > 0);
   const cups = priced.reduce((a, d) => a + d.cups, 0);
-  if (cups > 0) return priced.reduce((a, d) => a + d.price * d.cups, 0) / cups;
-  return priced.length ? priced.reduce((a, d) => a + d.price, 0) / priced.length : 0;
+  const avg = (k: "price" | "net") =>
+    cups > 0 ? priced.reduce((a, d) => a + d[k] * d.cups, 0) / cups : priced.length ? priced.reduce((a, d) => a + d[k], 0) / priced.length : 0;
+  return { price: avg("price"), net: avg("net") };
 }
 
 export function breakEven(m: MonthData, total: number) {
   const days = num(m.days);
-  const cupPrice = averageDrinkPrice(m);
-  const vat = Math.max(num(m.menu.vat), 0) / 100;
+  const drink = averageDrink(m);
+  const cupPrice = drink.price;
+  /** The average drink's VAT rate, across drinks with different rates */
+  const vat = drink.net > 0 ? drink.price / drink.net - 1 : Math.max(num(m.menu.vat), 0) / 100;
   const coffees = num(m.coffeesPerCustomer);
   const coffeeSpend = coffees * cupPrice;
   const extras = num(m.extrasPerCustomer);
