@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { type MonthData, type MonthsData, currencyFormatter, withDefaults } from "./expenses";
-import { type AlertRule, monthAlerts } from "./alerts";
+import { type Alert, type AlertRule, dismissalKey, monthAlerts, openAlerts } from "./alerts";
 
 const fmt = currencyFormatter("EUR");
 
@@ -144,5 +144,17 @@ describe("monthAlerts", () => {
       expect(only("staff", { [KEY]: staffed("9000") })).toEqual([]);
       expect(only("staff", { [KEY]: staffed("") })).toEqual([]);
     });
+  });
+});
+
+describe("openAlerts", () => {
+  const alert = (id: string) => ({ id, rule: "staff", title: id, detail: "" }) as Alert;
+
+  it("hides what was dismissed for that month only", () => {
+    const alerts = [alert("staff"), alert("costs")];
+    expect(openAlerts(alerts, "2026-10")).toEqual(alerts);
+    const dismissed = [dismissalKey("2026-10", "staff")];
+    expect(openAlerts(alerts, "2026-10", dismissed)).toEqual([alerts[1]]);
+    expect(openAlerts(alerts, "2026-11", dismissed)).toEqual(alerts);
   });
 });

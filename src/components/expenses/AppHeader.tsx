@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import {
   CalendarDays,
   Calculator,
@@ -21,6 +21,7 @@ import {
 
 import { CremaLogo } from "@/components/brand/Logo"
 import { Button } from "@/components/ui/button"
+import { useCloseOnOutside } from "@/hooks/useCloseOnOutside"
 import type { SaveStatus } from "@/hooks/useExpensesStore"
 import { type User, logOut } from "@/lib/auth-client"
 import { cn } from "@/lib/utils"
@@ -48,11 +49,13 @@ interface AppHeaderProps {
   onNext: () => void
   onView: (view: View) => void
   onSubmit: () => void
+  /** The alerts, at the top on the right */
+  bell?: React.ReactNode
   /** Shown on the right of the view tabs (the location and currency) */
   toolbar?: React.ReactNode
 }
 
-export function AppHeader({ monthLabel, user, saveStatus, view, exportMsg, onPrev, onNext, onView, onSubmit, toolbar }: AppHeaderProps) {
+export function AppHeader({ monthLabel, user, saveStatus, view, exportMsg, onPrev, onNext, onView, onSubmit, bell, toolbar }: AppHeaderProps) {
   const current = VIEWS.find((v) => v.key === view) ?? VIEWS[0]
   return (
     <header className="flex flex-col gap-4">
@@ -62,6 +65,7 @@ export function AppHeader({ monthLabel, user, saveStatus, view, exportMsg, onPre
         </Link>
         <div className="flex items-center gap-3">
           {saveStatus && <SaveIndicator status={saveStatus} />}
+          {bell}
           {user && <UserMenu user={user} />}
         </div>
       </div>
@@ -148,21 +152,7 @@ function UserMenu({ user }: { user: User }) {
   const root = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
 
-  useEffect(() => {
-    if (!open) return
-    const onDown = (e: PointerEvent) => !root.current?.contains(e.target as Node) && setOpen(false)
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Escape") return
-      setOpen(false)
-      button.current?.focus()
-    }
-    document.addEventListener("pointerdown", onDown)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("pointerdown", onDown)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [open])
+  useCloseOnOutside(open, useCallback(() => setOpen(false), []), root, button)
 
   const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email
   return (
