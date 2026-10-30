@@ -3,9 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 
+import type { Alert } from "@/lib/alerts";
 import { type MonthData, computeTotals, currencyFormatter, menuSales, priceFormatter, sampleMonth } from "@/lib/expenses";
 import { takingsSummary } from "@/lib/takings";
 import { SuppliesEditor } from "./Editors";
+import { AlertBell } from "./AlertBell";
 import { MenuView } from "./MenuView";
 import { TakingsView } from "./TakingsView";
 import { WhatIfView } from "./WhatIfView";
@@ -74,6 +76,38 @@ describe("SuppliesEditor", () => {
     await user.tab();
     expect(row.getByText("25%")).toBeTruthy();
     expect(row.queryByRole("status")).toBeNull();
+describe("AlertBell", () => {
+  const alerts = [
+    { id: "staff", rule: "staff", title: "Staff cost is high", detail: "It takes 50% of sales." },
+    { id: "costs", rule: "costs", title: "Costs are up 12% on last month", detail: "1,120 against 1,000." },
+  ] as Alert[];
+
+  function Bell({ start = alerts }: { start?: Alert[] }) {
+    const [open, setOpen] = useState(start);
+    return <AlertBell alerts={open} onDismiss={(id) => setOpen((list) => list.filter((a) => a.id !== id))} />;
+  }
+
+  it("counts the warnings, lists them when opened, and lets each be dismissed", async () => {
+    const user = userEvent.setup();
+    render(<Bell />);
+    expect(screen.queryByText("Staff cost is high")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Alerts: 2" }));
+    expect(screen.getByText("Staff cost is high")).toBeTruthy();
+    expect(screen.getByText("Costs are up 12% on last month")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Dismiss: Staff cost is high" }));
+    expect(screen.queryByText("Staff cost is high")).toBeNull();
+    expect(screen.getByRole("button", { name: "Alerts: 1" })).toBeTruthy();
+  });
+
+  it("says so when there's nothing, and closes on Escape", async () => {
+    const user = userEvent.setup();
+    render(<Bell start={[]} />);
+    const bell = screen.getByRole("button", { name: "Alerts: none" });
+    await user.click(bell);
+    expect(screen.getByText("Nothing to worry about this month.")).toBeTruthy();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByText("Nothing to worry about this month.")).toBeNull();
+    expect(document.activeElement).toBe(bell);
   });
 });
 

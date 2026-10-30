@@ -97,3 +97,10 @@ export function monthAlerts(data: MonthsData, key: string, now: Date, fmt: Fmt):
   if (!m) return [];
   return [...behindAlert(m, key, now, fmt), ...costsAlert(data, key, fmt), ...staffAlert(m), ...marginAlerts(m)];
 }
+
+/** How a dismissal is saved: per month, so a drink that's still too thin warns again next month. */
+export const dismissalKey = (key: string, id: string) => `${key}:${id}`;
+
+/** The alerts the owner hasn't dismissed. */
+export const openAlerts = (alerts: Alert[], key: string, dismissed: string[] = []) =>
+  alerts.filter((a) => !dismissed.includes(dismissalKey(key, a.id)));

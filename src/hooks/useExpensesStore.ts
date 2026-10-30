@@ -12,6 +12,7 @@ import {
   sampleMonth,
   shiftMonth,
 } from "@/lib/expenses"
+import { dismissalKey } from "@/lib/alerts"
 import { type GeoLocation, currencyForCountry, currencyForLocation, detectLocation } from "@/lib/geo"
 import { type Workspace, cleanWorkspace } from "@/lib/workspace"
 import { loadWorkspace, saveWorkspace } from "@/lib/workspace-client"
@@ -193,6 +194,12 @@ export function useExpensesStore(mode: StoreMode) {
     [update],
   )
 
+  /** Stop showing an alert of the current month. */
+  const dismissAlert = useCallback(
+    (id: string) => update((s) => ({ ...s, dismissedAlerts: [...(s.dismissedAlerts ?? []), dismissalKey(s.month, id)] })),
+    [update],
+  )
+
   /** Change the currency label only; amounts are not converted. */
   const setCurrency = useCallback((currency: Currency) => update((s) => ({ ...s, currency })), [update])
 
@@ -233,5 +240,5 @@ export function useExpensesStore(mode: StoreMode) {
     ? { country, city: country === detected?.country ? detected.city : null }
     : detected
 
-  return { state, location, saveStatus, loadFailed, importOffer, resolveImport, mutate, go, setCurrency, setCountry }
+  return { state, location, saveStatus, loadFailed, importOffer, resolveImport, mutate, go, dismissAlert, setCurrency, setCountry }
 }
