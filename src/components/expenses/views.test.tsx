@@ -76,6 +76,9 @@ describe("SuppliesEditor", () => {
     await user.tab();
     expect(row.getByText("25%")).toBeTruthy();
     expect(row.queryByRole("status")).toBeNull();
+  });
+});
+
 describe("AlertBell", () => {
   const alerts = [
     { id: "staff", rule: "staff", title: "Staff cost is high", detail: "It takes 50% of sales." },
