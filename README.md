@@ -44,6 +44,7 @@ Five views: **Expenses** (only costs), **Menu & sales** (prices, sales and break
 - **Menu & sales: drinks and food**: two lists, Drinks and Food, each with its own add button; an item added to the wrong one can be moved, or removed. Every item has its recipe (drinks from the Supplies and Consumables, food from the Consumables), menu price (VAT included), its VAT rate (each item's own: take-away and sit-in can be taxed differently; a new item starts at the menu's rate), and how many sell a month, ranked by what it earns. Cards for the best earner, the thinnest margin and the menu's total; per item, the price that reaches a target margin (one target for the whole menu, set from any item). A month saved before menus gets one drink from its old cup recipe and price.
 - **Menu & sales: sales & profit**: the month's sales follow the menu (each item's price without VAT × how many sell) and update as it changes, until the actual takings are typed in; then the profit or loss, margin, and distance from break-even.
 - **Menu & sales: break-even check**: customers needed per month and per day, from drinks and food per customer at the menu's average drink and food prices, each item's VAT taken out. Food per customer is worked out from what the menu sells (food items per drink) unless typed in. Also shows the till target per opening day, VAT included.
+- **Menu & sales: staff cost**: staff cost as a % of the month's sales excl. VAT, with a hint against the 25–35% that's usual for a café.
 - **Daily takings**: a calendar of the month to type each day's till total into (VAT included), green or red against the daily target: the month's costs over its opening days, with the average VAT on a sale on top. Shows what's taken, what's needed, what each day left must take, the pace, the average by day of the week, and can set the month's sales from the takings without VAT.
 - **What if**: sliders for bean and milk prices, rent, extra staff hours, drink prices and cups sold, plus one-tap scenarios, tried on the month's own figures without saving. Shows profit, costs, sales and break-even before and after, and what would keep today's profit: a price rise in %, or more customers a day.
 - **Analytics**: group by month, 3 months, 6 months or year, with KPIs, a stacked bar chart and a breakdown table.
@@ -160,6 +161,7 @@ The month's calculations live in [`src/lib/expenses.ts`](src/lib/expenses.ts), t
 | --- | --- |
 | Line-item categories | sum of *amount per month* |
 | Supplies, Consumables | Σ quantity × price per unit |
+| Staff cost share | Staff total ÷ the month's sales excl. VAT (typed in, else from the menu); healthy is 25–35% |
 | Staff (per row) | employees × hours × hourly pay × (1 + contributions % / 100) |
 | Month total | sum of the six categories |
 | Average drink price | the menu prices weighted by cups sold, or their plain average without cups sold; with VAT, and without it at each drink's own rate |
@@ -219,6 +221,7 @@ crema/
 │   │   ├── takings.ts             each day's till against the daily break-even target
 │   │   ├── price-history.ts       each supply's past price changes
 │   │   ├── price-impact.ts        which menu items a price change touches
+│   │   ├── staff-share.ts         staff cost as a share of sales
 │   │   ├── what-if.ts             a change tried on the month's figures
 │   │   ├── workspace.ts           the saved shape and its checks
 │   │   ├── plan.ts                free or Pro, and the isPro() check
