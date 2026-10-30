@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Coffee, Croissant, Plus, Trash2 } from "lucide-react"
 
-import { ProfitCard } from "@/components/expenses/ProfitCards"
+import { ProfitCard, StaffShareCard } from "@/components/expenses/ProfitCards"
 import { BreakEvenCard } from "@/components/expenses/Sidebar"
 import { Button } from "@/components/ui/button"
 import { Card, Eyebrow } from "@/components/ui/card"
@@ -131,8 +131,9 @@ export function MenuView({
           Sales &amp; break-even
         </h2>
         <div className="flex flex-wrap items-start gap-6">
-          <div className="flex min-w-0 flex-[1_1_340px] flex-col">
+          <div className="flex min-w-0 flex-[1_1_340px] flex-col gap-6">
             <ProfitCard month={month} total={total} fmt={fmt} mutate={mutate} />
+            <StaffShareCard month={month} fmt={fmt} />
           </div>
           <div className="flex min-w-0 flex-[1_1_340px] flex-col">
             <BreakEvenCard month={month} total={total} fmt={fmt} currency={currency} mutate={mutate} />

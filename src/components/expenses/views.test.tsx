@@ -35,6 +35,22 @@ const rows = (part: "Drinks" | "Food" = "Drinks") =>
 const kept = (editor: HTMLElement) => within(editor).getByText(/You keep/).parentElement?.textContent;
 
 describe("MenuView", () => {
+  it("shows staff cost as a share of sales, and follows the sales typed in", async () => {
+    const user = userEvent.setup();
+    const m = sampleMonth();
+    const staff = computeTotals(m).staff;
+    m.revenue = String(staff * 2);
+    render(<Harness view="menu" start={m} />);
+    const card = () => screen.getByText("Staff cost as % of sales").parentElement!;
+    expect(card().textContent).toContain("50,0%");
+    expect(card().textContent).toContain("Above the usual range");
+    const sales = screen.getByLabelText("Sales this month, excl. VAT");
+    await user.clear(sales);
+    await user.type(sales, String(staff * 3.5));
+    expect(card().textContent).toContain("Within the usual range");
+    expect(card().textContent).toContain("about 25–35%");
+  });
+
   it("ranks the drinks by what they earn a month, and names the thinnest margin", () => {
     render(<Harness view="menu" />);
     // Sample café: cappuccino 1,100 cups × 2.13 kept, latte 800 × 2.24, espresso 700 × 1.68, croissant 500 × 2.00, flat white 400 × 2.33

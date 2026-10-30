@@ -2,12 +2,19 @@ import { Button } from "@/components/ui/button"
 import { Card, CardTitle } from "@/components/ui/card"
 import { Field, NumberInput } from "@/components/ui/input"
 import { type MonthData, menuSales, profitOf } from "@/lib/expenses"
+import { STAFF_RANGE, type StaffShareStatus, staffShare } from "@/lib/staff-share"
 import { cn } from "@/lib/utils"
 
 type Mutate = (fn: (m: MonthData) => void) => void
 type Fmt = (n: number) => string
 
 const pct = (v: number) => (v * 100).toFixed(1).replace(".", ",") + "%"
+
+const STAFF_HINT: Record<StaffShareStatus, string> = {
+  low: "Below the usual range. Good if the shifts are covered; check every wage is in Staff.",
+  healthy: "Within the usual range.",
+  high: "Above the usual range. Look at the rota, or at what the busiest hours sell.",
+}
 
 function Row({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
@@ -81,6 +88,31 @@ export function ProfitCard({ month, total, fmt, mutate }: { month: MonthData; to
       ) : (
         <p className="m-0 text-[13px] text-muted-foreground">
           Type in what the shop took this month, or how many of each item you sell on the menu, to see the profit or loss and how far you are from break-even.
+        </p>
+      )}
+    </Card>
+  )
+}
+
+/** Wages as a share of the month's sales, against the range that's healthy for a café. */
+export function StaffShareCard({ month, fmt }: { month: MonthData; fmt: Fmt }) {
+  const r = staffShare(month)
+  const range = `${STAFF_RANGE.low * 100}–${STAFF_RANGE.high * 100}%`
+  return (
+    <Card>
+      <CardTitle>Staff cost as % of sales</CardTitle>
+      {r ? (
+        <>
+          <div className={cn("font-display text-[32px] font-bold", r.status === "high" ? "text-destructive" : r.status === "healthy" && "text-good")}>
+            {pct(r.share)}
+          </div>
+          <p className="m-0 text-[13px] text-muted-foreground">
+            {fmt(r.staff)} of staff cost on {fmt(r.sales)} of sales. {STAFF_HINT[r.status]} Cafés usually run at about {range}.
+          </p>
+        </>
+      ) : (
+        <p className="m-0 text-[13px] text-muted-foreground">
+          Add your staff and this month&apos;s sales to see how they compare. Cafés usually run at about {range}.
         </p>
       )}
     </Card>
