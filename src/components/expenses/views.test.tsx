@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { type MonthData, computeTotals, currencyFormatter, menuSales, priceFormatter, sampleMonth } from "@/lib/expenses";
 import { takingsSummary } from "@/lib/takings";
+import { SuppliesEditor } from "./Editors";
 import { MenuView } from "./MenuView";
 import { TakingsView } from "./TakingsView";
 import { WhatIfView } from "./WhatIfView";
@@ -33,6 +34,34 @@ function Harness({ view, start = sampleMonth() }: { view: "menu" | "takings" | "
 const rows = (part: "Drinks" | "Food" = "Drinks") =>
   within(screen.getByRole("region", { name: `${part}, best earners first` })).queryAllByRole("button").filter((b) => b.hasAttribute("aria-pressed"));
 const kept = (editor: HTMLElement) => within(editor).getByText(/You keep/).parentElement?.textContent;
+
+describe("SuppliesEditor", () => {
+  function Editor() {
+    const [m, setM] = useState(sampleMonth());
+    const mutate = (fn: (m: MonthData) => void) =>
+      setM((prev) => {
+        const next = structuredClone(prev);
+        fn(next);
+        return next;
+      });
+    return <SuppliesEditor month={m} mutate={mutate} fmt={fmt} />;
+  }
+  const beans = () => within(screen.getByDisplayValue("Coffee beans").closest("div.flex") as HTMLElement);
+
+  it("marks a price change once the owner leaves the field, not while typing", async () => {
+    const user = userEvent.setup();
+    render(<Editor />);
+    expect(beans().queryByText(/%/)).toBeNull();
+    const field = beans().getByLabelText(/Price per unit/);
+    await user.clear(field);
+    await user.type(field, "24.2");
+    expect(beans().queryByText(/%/)).toBeNull();
+    await user.tab();
+    // 22 → 24.20 is 10% up
+    expect(beans().getByText("10.0%")).toBeTruthy();
+    expect(beans().getByLabelText("Up")).toBeTruthy();
+  });
+});
 
 describe("MenuView", () => {
   it("ranks the drinks by what they earn a month, and names the thinnest margin", () => {

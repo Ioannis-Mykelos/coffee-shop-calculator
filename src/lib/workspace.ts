@@ -3,6 +3,7 @@
 // Shared by the browser and the server, so the server checks what it's sent with the same rules the app saves by.
 
 import { type Currency, isCurrency, type MenuSettings, type MonthData, type MonthsData, withDefaults } from "./expenses";
+import { HISTORY_LIMIT } from "./price-history";
 
 export interface Workspace {
   month: string;
@@ -29,6 +30,7 @@ export const LIMITS = {
 const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
 const COUNTRY = /^[A-Z]{2}$/;
 const DAY = /^([1-9]|[12]\d|3[01])$/;
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const text = (v: unknown, max: number = LIMITS.text) => (typeof v === "string" ? v.slice(0, max) : "");
@@ -42,8 +44,18 @@ function list<T extends { id: string }>(v: unknown, item: (x: Record<string, unk
 }
 
 const lineItems = (v: unknown) => list(v, (x) => ({ id: id(x.id), label: text(x.label), amount: amount(x.amount) }));
+/** A supply's price changes, or nothing when it has none, so unchanged items are saved as they were. */
+function priceHistory(v: unknown) {
+  if (!Array.isArray(v)) return {};
+  const changes = v
+    .filter(isRecord)
+    .filter((x) => typeof x.date === "string" && DATE.test(x.date))
+    .map((x) => ({ date: x.date as string, from: amount(x.from), to: amount(x.to) }))
+    .slice(-HISTORY_LIMIT);
+  return changes.length ? { priceHistory: changes } : {};
+}
 const supplyItems = (v: unknown) =>
-  list(v, (x) => ({ id: id(x.id), label: text(x.label), qty: amount(x.qty), unit: text(x.unit, 20), price: amount(x.price) }));
+  list(v, (x) => ({ id: id(x.id), label: text(x.label), qty: amount(x.qty), unit: text(x.unit, 20), price: amount(x.price), ...priceHistory(x.priceHistory) }));
 const recipe = (v: unknown) => list(v, (x) => ({ id: id(x.id), supplyId: id(x.supplyId), qty: amount(x.qty) }));
 
 /** The menu, or undefined when the month has none yet (withDefaults then makes one from the cup recipe). */

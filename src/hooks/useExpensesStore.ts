@@ -8,6 +8,7 @@ import {
   STORE_KEY,
   computeTotals,
   monthKey,
+  nextMonth,
   sampleMonth,
   shiftMonth,
 } from "@/lib/expenses"
@@ -186,7 +187,7 @@ export function useExpensesStore(mode: StoreMode) {
     (delta: number) =>
       update((s) => {
         const k = shiftMonth(s.month, delta)
-        const data = s.data[k] ? s.data : { ...s.data, [k]: { ...structuredClone(s.data[s.month]), revenue: "", takings: {} } }
+        const data = s.data[k] ? s.data : { ...s.data, [k]: nextMonth(s.data[s.month]) }
         return { ...s, month: k, data }
       }),
     [update],
