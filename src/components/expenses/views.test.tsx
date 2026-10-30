@@ -58,8 +58,22 @@ describe("SuppliesEditor", () => {
     expect(beans().queryByText(/%/)).toBeNull();
     await user.tab();
     // 22 → 24.20 is 10% up
-    expect(beans().getByText("10.0%")).toBeTruthy();
+    expect(beans().getByText("10%")).toBeTruthy();
     expect(beans().getByLabelText("Up")).toBeTruthy();
+    // Every drink uses beans, so the row says what happened to their margins
+    expect(beans().getByRole("status").textContent).toMatch(/^Coffee beans up 10%: .+ margin is now \d+%.*Espresso \d+%/);
+  });
+
+  it("says nothing about the menu when the item isn't on it", async () => {
+    const user = userEvent.setup();
+    render(<Editor />);
+    const row = within(screen.getByDisplayValue("Napkins & stirrers").closest("div.flex") as HTMLElement);
+    const field = row.getByLabelText(/Price per unit/);
+    await user.clear(field);
+    await user.type(field, "50");
+    await user.tab();
+    expect(row.getByText("25%")).toBeTruthy();
+    expect(row.queryByRole("status")).toBeNull();
   });
 });
 

@@ -23,6 +23,12 @@ export function recordPriceChange(item: SupplyItem, from: string, to: string, da
   item.priceHistory = next.slice(-HISTORY_LIMIT);
 }
 
+/** A change's size for showing: "12%", or "4.5%" under 10%, without its sign. */
+export function percentLabel(percent: number) {
+  const size = Math.abs(percent);
+  return `${size < 10 ? Math.round(size * 10) / 10 : Math.round(size)}%`;
+}
+
 /** The latest change as a % of the old price, or null if the price has never changed. */
 export function lastPriceChange(item: SupplyItem): (PriceChange & { percent: number }) | null {
   const last = item.priceHistory?.at(-1);
