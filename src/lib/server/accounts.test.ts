@@ -323,10 +323,17 @@ describe('account settings', () => {
       hasPassword: true,
       twoFactorSince: null,
       recoveryCodesLeft: 0,
+      plan: 'free',
     });
     delete user().passwordHash;
     expect(await accountSettings(deps, '1')).toMatchObject({ hasPassword: false });
     expect(await accountSettings(deps, 'nobody')).toBeNull();
+  });
+
+  it('says which plan the account is on', async () => {
+    const { deps, user } = await signedIn();
+    user().plan = 'pro';
+    expect(await accountSettings(deps, '1')).toMatchObject({ plan: 'pro' });
   });
 
   describe('changePassword', () => {

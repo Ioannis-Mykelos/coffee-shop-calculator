@@ -8,6 +8,7 @@
 // receive the links.
 import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
+import { planOf, type Plan } from '../plan';
 import { hashRecoveryCode, matchCode, newRecoveryCodes, newSecret, openSecret, otpauthUri, sealSecret } from './totp';
 import { log } from './log';
 
@@ -42,6 +43,8 @@ export interface UserRecord {
   lastEmailAt?: Date;
   /** When they accepted the Terms and the Privacy Policy */
   consentAt?: Date;
+  /** Free or Pro; none means free (lib/plan.ts). Google accounts are made by Auth.js's adapter, so don't rely on it being set */
+  plan?: Plan;
   createdAt: Date;
 }
 
@@ -370,6 +373,7 @@ export async function accountSettings(deps: Pick<Deps, 'store'>, userId: string)
     hasPassword: !!user.passwordHash,
     twoFactorSince: user.totpEnabledAt?.toISOString() ?? null,
     recoveryCodesLeft: user.recoveryCodeHashes?.length ?? 0,
+    plan: planOf(user.plan),
   };
 }
 
