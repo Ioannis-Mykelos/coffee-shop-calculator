@@ -39,7 +39,7 @@
 Five views: **Expenses** (only costs), **Menu & sales** (prices, sales and break-even), **Daily takings**, **What if** and **Analytics**.
 
 - **Expenses**: six cost categories, a tab each with a running total (Rent & premises, Utilities, Supplies, Consumables, Staff, Other), with the month's total, breakdown and history.
-- **Supplier price history**: when a supply or consumable changes price, Crema saves the date and both prices, and shows an up or down arrow with the % change beside the price. Corrections on one day count as one change, and the history carries into new months.
+- **Supplier price history**: when a supply or consumable changes price, Crema saves the date and both prices, and shows an up or down arrow with the % change beside the price. Corrections on one day count as one change, and the history carries into new months. Right after a change, the row names the menu items it touches and their new margins, lowest first.
 - **Months**: step back and forward; a new month starts as a copy of the one you came from, with sales and daily takings blank.
 - **Menu & sales: drinks and food**: two lists, Drinks and Food, each with its own add button; an item added to the wrong one can be moved, or removed. Every item has its recipe (drinks from the Supplies and Consumables, food from the Consumables), menu price (VAT included), its VAT rate (each item's own: take-away and sit-in can be taxed differently; a new item starts at the menu's rate), and how many sell a month, ranked by what it earns. Cards for the best earner, the thinnest margin and the menu's total; per item, the price that reaches a target margin (one target for the whole menu, set from any item). A month saved before menus gets one drink from its old cup recipe and price.
 - **Menu & sales: sales & profit**: the month's sales follow the menu (each item's price without VAT × how many sell) and update as it changes, until the actual takings are typed in; then the profit or loss, margin, and distance from break-even.
@@ -217,6 +217,7 @@ crema/
 │   │   ├── menu.ts                each drink's and food item's cost, margin and target price
 │   │   ├── takings.ts             each day's till against the daily break-even target
 │   │   ├── price-history.ts       each supply's past price changes
+│   │   ├── price-impact.ts        which menu items a price change touches
 │   │   ├── what-if.ts             a change tried on the month's figures
 │   │   ├── workspace.ts           the saved shape and its checks
 │   │   ├── geo.ts                 country → currency, location lookup
