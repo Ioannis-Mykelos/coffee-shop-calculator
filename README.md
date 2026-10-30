@@ -46,6 +46,7 @@ Five views: **Expenses** (only costs), **Menu & sales** (prices, sales and break
 - **Menu & sales: staff cost**: staff cost as a % of the month's sales excl. VAT, with a hint against the 25–35% that's usual for a café.
 - **Daily takings**: a calendar of the month to type each day's till total into (VAT included), green or red against the daily target: the month's costs over its opening days, with the average VAT on a sale on top. Shows what's taken, what's needed, what each day left must take, the pace, the average by day of the week, and can set the month's sales from the takings without VAT.
 - **What if**: sliders for bean and milk prices, rent, extra staff hours, drink prices and cups sold, plus one-tap scenarios, tried on the month's own figures without saving. Shows profit, costs, sales and break-even before and after, and what would keep today's profit: a price rise in %, or more customers a day.
+- **Alerts**: a bell in the header counts the month's warnings: a drink below the target margin, this week behind the daily target (from Wednesday), costs more than 10% up on last month, or staff cost above 35% of sales. Each can be dismissed for that month.
 - **Analytics**: group by month, 3 months, 6 months or year, with KPIs, a stacked bar chart and a breakdown table.
 - **Export month**: a real Excel workbook (Summary, Expenses, Staff, Menu, Daily takings when there are any, History), from a built-in writer with no library.
 - **Location and currency**: the visitor's country (from Netlify's IP geolocation, else the browser language) picks the currency, with a flag. Both can be changed by hand. 70+ currencies.
@@ -218,6 +219,7 @@ crema/
 │   │   ├── menu.ts                each drink's and food item's cost, margin and target price
 │   │   ├── takings.ts             each day's till against the daily break-even target
 │   │   ├── staff-share.ts         staff cost as a share of sales
+│   │   ├── alerts.ts              the rules behind the month's warnings
 │   │   ├── what-if.ts             a change tried on the month's figures
 │   │   ├── workspace.ts           the saved shape and its checks
 │   │   ├── geo.ts                 country → currency, location lookup

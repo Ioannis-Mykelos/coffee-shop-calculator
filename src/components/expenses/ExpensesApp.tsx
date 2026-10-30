@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 
+import { AlertBell } from "@/components/expenses/AlertBell"
 import { AnalyticsView } from "@/components/expenses/AnalyticsView"
 import { AppHeader, type View } from "@/components/expenses/AppHeader"
 import { CategoryTabs } from "@/components/expenses/CategoryTabs"
@@ -23,6 +24,7 @@ import {
   monthLabel,
   priceFormatter,
 } from "@/lib/expenses"
+import { monthAlerts, openAlerts } from "@/lib/alerts"
 import type { User } from "@/lib/auth-client"
 import { buildXlsx, downloadBlob } from "@/lib/xlsx"
 import { ImportBanner, LoadFailed } from "@/components/expenses/SyncNotices"
@@ -32,7 +34,7 @@ import { ImportBanner, LoadFailed } from "@/components/expenses/SyncNotices"
  * browser, with no login.
  */
 export function ExpensesApp({ mode, user }: { mode: StoreMode; user?: User }) {
-  const { state, location, saveStatus, loadFailed, importOffer, resolveImport, mutate, go, setCurrency, setCountry } = useExpensesStore(mode)
+  const { state, location, saveStatus, loadFailed, importOffer, resolveImport, mutate, go, dismissAlert, setCurrency, setCountry } = useExpensesStore(mode)
   const [tab, setTab] = useState<CategoryKey>("premises")
   const [view, setView] = useState<View>("calc")
   const [exportMsg, setExportMsg] = useState("")
@@ -48,6 +50,7 @@ export function ExpensesApp({ mode, user }: { mode: StoreMode; user?: User }) {
   const totals = computeTotals(m)
   const label = monthLabel(month)
   const cat = CATEGORIES.find((c) => c.key === tab) ?? CATEGORIES[0]
+  const alerts = openAlerts(monthAlerts(data, month, new Date(), fmt), month, state.dismissedAlerts)
 
   const changeMonth = (delta: number) => {
     go(delta)
@@ -87,6 +90,7 @@ export function ExpensesApp({ mode, user }: { mode: StoreMode; user?: User }) {
           onNext={() => changeMonth(1)}
           onView={setView}
           onSubmit={submit}
+          bell={<AlertBell alerts={alerts} onDismiss={dismissAlert} />}
           toolbar={
             <LocationBar
               location={location}

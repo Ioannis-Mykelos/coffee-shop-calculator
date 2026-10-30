@@ -10,6 +10,8 @@ export interface Workspace {
   currency: Currency;
   /** Country the owner picked by hand (e.g. when on a VPN); overrides the detected one. */
   country?: string;
+  /** Alerts the owner dismissed, as "YYYY-MM:alert id" (lib/alerts); the oldest go first past the item limit. */
+  dismissedAlerts?: string[];
 }
 
 /** Bounds on what one workspace may hold, so a request can't fill the database. */
@@ -29,6 +31,7 @@ export const LIMITS = {
 const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
 const COUNTRY = /^[A-Z]{2}$/;
 const DAY = /^([1-9]|[12]\d|3[01])$/;
+const DISMISSAL = /^\d{4}-\d{2}:[\w:-]{1,60}$/;
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const text = (v: unknown, max: number = LIMITS.text) => (typeof v === "string" ? v.slice(0, max) : "");
@@ -103,6 +106,12 @@ export function cleanMonth(v: unknown): MonthData | null {
   });
 }
 
+/** Saved dismissals, or nothing when there are none, so a workspace without any is saved as it was. */
+function dismissedAlerts(v: unknown) {
+  const kept = Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && DISMISSAL.test(x)).slice(-LIMITS.items) : [];
+  return kept.length ? { dismissedAlerts: kept } : {};
+}
+
 /** A workspace as sent by a browser, cleaned up, or null if it isn't one. */
 export function cleanWorkspace(v: unknown): Workspace | null {
   if (!isRecord(v) || !isRecord(v.data) || typeof v.month !== "string" || !MONTH_KEY.test(v.month)) return null;
@@ -119,5 +128,6 @@ export function cleanWorkspace(v: unknown): Workspace | null {
     data,
     currency: isCurrency(v.currency) ? v.currency : "EUR",
     ...(typeof v.country === "string" && COUNTRY.test(v.country) && { country: v.country }),
+    ...dismissedAlerts(v.dismissedAlerts),
   };
 }

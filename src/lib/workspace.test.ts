@@ -5,6 +5,15 @@ import { cleanWorkspace, LIMITS } from "./workspace";
 const workspace = () => ({ month: "2026-10", currency: "DKK", country: "DK", data: { "2026-10": sampleMonth() } });
 
 describe("cleanWorkspace", () => {
+  it("keeps dismissed alerts, within the limit, and drops anything else", () => {
+    const old = Array.from({ length: LIMITS.items }, (_, i) => `2026-09:margin:d${i}`);
+    const clean = cleanWorkspace({ ...workspace(), dismissedAlerts: ["junk", 7, ...old, "2026-10:staff"] })!;
+    expect(clean.dismissedAlerts).toHaveLength(LIMITS.items);
+    expect(clean.dismissedAlerts?.at(-1)).toBe("2026-10:staff");
+    expect(clean.dismissedAlerts).not.toContain("junk");
+    expect(cleanWorkspace({ ...workspace(), dismissedAlerts: [] })).not.toHaveProperty("dismissedAlerts");
+  });
+
   it("keeps a workspace the app saved, as it is", () => {
     const w = workspace();
     expect(cleanWorkspace(JSON.parse(JSON.stringify(w)))).toEqual(w);
