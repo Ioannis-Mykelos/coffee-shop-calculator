@@ -1,15 +1,18 @@
-import { Trash2 } from "lucide-react"
+import { ArrowDown, ArrowUp, Trash2 } from "lucide-react"
+import { useRef } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Field, Input, NumberInput } from "@/components/ui/input"
 import {
   type LineCategoryKey,
   type MonthData,
+  type SupplyItem,
   num,
   staffLine,
   staffSummary,
   uid,
 } from "@/lib/expenses"
+import { dayKey, lastPriceChange, recordPriceChange } from "@/lib/price-history"
 import { cn } from "@/lib/utils"
 
 type Mutate = (fn: (m: MonthData) => void) => void
@@ -73,6 +76,58 @@ export function LineItemsEditor({ month, list, mutate }: { month: MonthData; lis
   )
 }
 
+/** Arrow and % for the price's latest change. A higher price is bad news, so up is red. */
+function PriceTrend({ item }: { item: SupplyItem }) {
+  const change = lastPriceChange(item)
+  if (!change) return null
+  const up = change.percent > 0
+  const percent = Math.abs(change.percent).toFixed(Math.abs(change.percent) < 10 ? 1 : 0)
+  const date = new Date(`${change.date}T12:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+  return (
+    <span
+      title={`${change.from} → ${change.to} on ${date}`}
+      className={cn("inline-flex items-center gap-0.5 font-mono font-medium", up ? "text-destructive" : "text-good")}
+    >
+      {up ? <ArrowUp aria-label="Up" className="size-3" /> : <ArrowDown aria-label="Down" className="size-3" />}
+      {percent}%
+    </span>
+  )
+}
+
+/** The price, noted in the item's history when the owner leaves the field, so half-typed figures aren't recorded. */
+function PriceField({ item, list, mutate }: { item: SupplyItem; list: "supplies" | "consumables"; mutate: Mutate }) {
+  const before = useRef(item.price)
+  return (
+    <Field
+      label={
+        <span className="flex items-center justify-between gap-1.5">
+          Price per unit
+          <PriceTrend item={item} />
+        </span>
+      }
+      className="flex-[0_1_150px]"
+    >
+      <NumberInput
+        className="px-2.5"
+        value={item.price}
+        onChange={setField(mutate, list, item.id, "price")}
+        onFocus={() => {
+          before.current = item.price
+        }}
+        onBlur={() => {
+          const from = before.current
+          if (num(from) === num(item.price)) return
+          before.current = item.price
+          mutate((m) => {
+            const it = m[list].find((x) => x.id === item.id)
+            if (it) recordPriceChange(it, from, it.price, dayKey(new Date()))
+          })
+        }}
+      />
+    </Field>
+  )
+}
+
 /** Quantity × price rows; used for Supplies and Consumables. */
 export function SuppliesEditor({
   month,
@@ -102,9 +157,7 @@ export function SuppliesEditor({
           <Field label="Unit" className="flex-[0_1_80px]">
             <Input className="px-2.5" value={it.unit} onChange={setField(mutate, list, it.id, "unit")} placeholder="pcs" />
           </Field>
-          <Field label="Price per unit" className="flex-[0_1_120px]">
-            <NumberInput className="px-2.5" value={it.price} onChange={setField(mutate, list, it.id, "price")} />
-          </Field>
+          <PriceField item={it} list={list} mutate={mutate} />
           <div className="flex flex-[0_1_120px] flex-col gap-1 text-xs text-muted-foreground">
             Line total
             <div className="flex h-11 items-center justify-end font-mono text-[15px] font-medium text-foreground">
