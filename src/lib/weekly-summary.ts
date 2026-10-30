@@ -1,7 +1,7 @@
 // Last week's story, from the daily takings: what the till took, the best and worst day, how far from the target, and
 // the week's alerts. A week can run across two months, so each day is read from its own month, with that month's target.
 
-import { type Alert, monthAlerts } from "./alerts";
+import { type Alert, monthAlerts, openAlerts } from "./alerts";
 import { type MonthsData, computeTotals, monthKey } from "./expenses";
 import { takingsSummary } from "./takings";
 
@@ -46,16 +46,23 @@ function rangeLabel(monday: Date, sunday: Date) {
     : `${dateOf(monday, { day: "numeric", month: "long" })} – ${dateOf(sunday, { day: "numeric", month: "long" })}`;
 }
 
-/** Each month's alerts as they stood when the week left it. The later month's copy of a repeated alert wins. */
-function weekAlerts(data: MonthsData, week: Date[], fmt: Fmt) {
+/** Each month's alerts as they stood when the week left it. The later month has the last word on a repeated alert. */
+function weekAlerts(data: MonthsData, week: Date[], fmt: Fmt, dismissed: string[]) {
   const lastDayIn = new Map(week.map((d) => [monthKey(d), d]));
   const alerts = new Map<string, Alert>();
-  for (const [key, day] of lastDayIn) for (const a of monthAlerts(data, key, day, fmt)) alerts.set(a.id, a);
+  for (const [key, day] of lastDayIn) {
+    const all = monthAlerts(data, key, day, fmt);
+    const open = openAlerts(all, key, dismissed);
+    for (const a of all) {
+      if (open.includes(a)) alerts.set(a.id, a);
+      else alerts.delete(a.id);
+    }
+  }
   return [...alerts.values()];
 }
 
 /** The week starting on `monday`, or null if no day of it has takings: there's no story to tell. */
-export function weeklySummary(data: MonthsData, monday: Date, fmt: Fmt): WeeklySummary | null {
+export function weeklySummary(data: MonthsData, monday: Date, fmt: Fmt, dismissed: string[] = []): WeeklySummary | null {
   const week = Array.from({ length: 7 }, (_, i) => new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i));
   const days: WeekDay[] = [];
   let target = 0;
@@ -81,6 +88,6 @@ export function weeklySummary(data: MonthsData, monday: Date, fmt: Fmt): WeeklyS
     gap: sales - target,
     best,
     worst: days.length > 1 ? worst : null,
-    alerts: weekAlerts(data, week, fmt),
+    alerts: weekAlerts(data, week, fmt, dismissed),
   };
 }

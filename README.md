@@ -132,6 +132,7 @@ Server code is in [`src/lib/server`](src/lib/server), guarded by `server-only`; 
 - **Rate limits**: log in 10 tries per address and 30 per IP every 15 minutes; sign-up, resend, forgot and reset per IP per hour; account settings 10 password checks per 15 minutes. Account emails are throttled to one a minute per address. With Upstash Redis set (`UPSTASH_REDIS_REST_*`), every server instance shares the counts; otherwise each counts in its own memory.
 - **Open redirects**: `/login?next=` only accepts paths on this site ([`next-path.ts`](src/lib/next-path.ts)).
 - **Plans**: each account is free or Pro (no stored plan means free), and `isPro()` in [`plan.ts`](src/lib/plan.ts) is the one check for Pro features. During the beta it says yes to everyone, so nothing is hidden; turn off `BETA_EVERYONE_PRO` to start locking features. The plan isn't editable through the API.
+- **Weekly email**: off until the owner turns it on in Account, and offered only when the site can send email. Netlify calls `/api/cron/weekly-email` on Monday mornings with `CRON_SECRET`; without that secret the route refuses everyone. Each owner's week is marked once sent, so the repeat runs only finish a run that was cut short.
 - **Headers**: `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Strict-Transport-Security` and `Permissions-Policy` on every response ([`next.config.ts`](next.config.ts)).
 
 ## How figures are saved
@@ -190,6 +191,7 @@ The break-even counts every cost as fixed. Supplies and consumables really grow 
 crema/
 ├── docs/screenshots/              README images
 ├── netlify/edge-functions/geo.ts  IP location on Netlify (/api/geo)
+├── netlify/functions/weekly-email.mts   Monday morning schedule for the weekly email
 ├── public/
 │   ├── home/                      café photography, the menu board, the sign, the link-preview image
 │   ├── brand/                     Google "G" for the sign-in button
@@ -224,6 +226,7 @@ crema/
 │   │   ├── price-impact.ts        which menu items a price change touches
 │   │   ├── staff-share.ts         staff cost as a share of sales
 │   │   ├── alerts.ts              the rules behind the month's warnings
+│   │   ├── weekly-email.ts        the Monday email's words, as text and HTML
 │   │   ├── what-if.ts             a change tried on the month's figures
 │   │   ├── workspace.ts           the saved shape and its checks
 │   │   ├── plan.ts                free or Pro, and the isPro() check
@@ -251,6 +254,7 @@ The full account flow (sign up, confirm the email, log in, save and reload figur
 1. Import the repository in Netlify (**Add new site → Import an existing project**).
 2. Under **Site configuration → Environment variables**, add `MONGODB_URI`, `AUTH_SECRET`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Add `EMAIL_SERVER_HOST`, `EMAIL_SERVER_PORT`, `EMAIL_SERVER_USER`, `EMAIL_SERVER_PASSWORD` and `EMAIL_FROM` to offer email + password log in too.
 3. Add `AUTH_URL` with **a value for the Production context only**: the site's address, e.g. `https://crema-cost-planner.netlify.app` (no trailing slash). Without it, Auth.js takes the host Netlify hands the function, `main--<your-site>.netlify.app`, and Google refuses the log in with `Error 400: redirect_uri_mismatch`. Leave the other contexts empty, or deploy previews would send Google logins back to the live site. Email links use `AUTH_URL` too, so `APP_URL` isn't needed.
+   For the Monday email, also add `CRON_SECRET`, any long random value, and the `EMAIL_SERVER_*` settings.
 4. In Google Cloud Console, add `https://<your-site>/api/auth/callback/google` as an authorized redirect URI.
 5. Deploy. The production build log shows `Migrating: …` the first time, then `the database is up to date`.
 

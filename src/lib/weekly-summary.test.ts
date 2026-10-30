@@ -122,5 +122,14 @@ describe("weeklySummary", () => {
       expect(costs).toHaveLength(1);
       expect(costs[0].detail).toContain(fmt(4000));
     });
+
+    it("leaves out a dismissed alert, and the later month's dismissal covers both", () => {
+      const data = { "2026-09": month({ 29: "100" }), "2026-10": month({ 1: "100" }, "4000") };
+      const week = new Date(2026, 8, 28);
+      const costs = (dismissed: string[]) => weeklySummary({ "2026-08": month({}, "1000"), ...data }, week, fmt, dismissed)!.alerts.filter((a) => a.rule === "costs");
+      expect(costs([])).toHaveLength(1);
+      expect(costs(["2026-10:costs"])).toHaveLength(0);
+      expect(costs(["2026-09:costs"])).toHaveLength(1);
+    });
   });
 });

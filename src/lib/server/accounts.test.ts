@@ -324,6 +324,7 @@ describe('account settings', () => {
       twoFactorSince: null,
       recoveryCodesLeft: 0,
       plan: 'free',
+      weeklyEmail: false,
     });
     delete user().passwordHash;
     expect(await accountSettings(deps, '1')).toMatchObject({ hasPassword: false });
