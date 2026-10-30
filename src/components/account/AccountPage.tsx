@@ -17,7 +17,9 @@ import {
   forgotPassword,
   logInWithPassword,
   logOut,
+  sendTestWeeklyEmail,
   sessionRemembered,
+  setWeeklyEmail,
   startTwoStep,
 } from "@/lib/auth-client"
 
@@ -94,6 +96,8 @@ export function AccountPage() {
               <TwoStepCard settings={settings} notify={notify} onChange={(patch) => setSettings({ ...settings, ...patch })} />
             </>
           )}
+          {/* Without a way to send email, a switch here would promise something that never arrives. */}
+          {settings.emailLogin && <WeeklyEmailCard settings={settings} notify={notify} onChange={(patch) => setSettings({ ...settings, ...patch })} />}
           <DeleteCard settings={settings} onDeleted={() => setDeleted(true)} />
         </>
       )}
@@ -487,6 +491,40 @@ function TwoStepCard({ settings, notify, onChange }: { settings: AccountSettings
     <Card icon={icon} title="Two-step login">
       {setup.step !== "codes" && intro}
       {body}
+    </Card>
+  )
+}
+
+/** The Monday email: on or off, and a test sent straight away. */
+function WeeklyEmailCard({ settings, notify, onChange }: { settings: AccountSettings; notify: Notify; onChange: (patch: Partial<AccountSettings>) => void }) {
+  const [busy, setBusy] = useState(false)
+  const on = settings.weeklyEmail
+  const toggle = async () => {
+    setBusy(true)
+    const res = await setWeeklyEmail(!on)
+    setBusy(false)
+    if (res.result === undefined) notify(res.message, "bad")
+    else onChange({ weeklyEmail: res.result === "on" })
+  }
+  const test = async () => {
+    setBusy(true)
+    const res = await sendTestWeeklyEmail()
+    setBusy(false)
+    if (res.result === "sent") notify(`Test sent to ${settings.email}.`)
+    else if (res.result === "too-soon") notify("We've just emailed you. Try again in a minute.", "bad")
+    else notify(res.message ?? "That didn't go through. Please try again.", "bad")
+  }
+  return (
+    <Card icon={<Mail className="size-5" />} title="Weekly email">
+      <p className={muted}>Every Monday morning: last week&apos;s sales against your target, your best and slowest days, and anything worth a look. Weeks with no daily takings send nothing.</p>
+      <div className="flex flex-wrap gap-2.5">
+        <Button variant={on ? "outline" : "default"} disabled={busy} aria-pressed={on} onClick={toggle}>
+          {on ? "Turn off" : "Turn on"}
+        </Button>
+        <Button variant="outline" disabled={busy} onClick={test}>
+          Send me a test
+        </Button>
+      </div>
     </Card>
   )
 }

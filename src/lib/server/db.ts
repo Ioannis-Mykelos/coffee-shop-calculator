@@ -69,6 +69,9 @@ export const mongoUserStore: UserStore = {
   },
 };
 
+/** The accounts with the Monday email switched on. */
+export const optedInToWeeklyEmail = async () => (await (await users()).find({ weeklyEmail: true }).toArray()).map(toRecord);
+
 // ---------------------------------------------------------------------------
 // Workspaces: one document per owner (its _id is the user id) with everything they've entered. `version` goes up with
 // every save, and a save names the version it was made from: one made from an older version (another device saved

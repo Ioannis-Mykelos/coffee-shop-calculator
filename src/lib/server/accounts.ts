@@ -45,6 +45,10 @@ export interface UserRecord {
   consentAt?: Date;
   /** Free or Pro; none means free (lib/plan.ts). Google accounts are made by Auth.js's adapter, so don't rely on it being set */
   plan?: Plan;
+  /** Wants the Monday email; off unless they switch it on */
+  weeklyEmail?: boolean;
+  /** The Monday of the last week they were emailed about, so a repeat run can't send it twice */
+  weeklyEmailWeek?: string;
   createdAt: Date;
 }
 
@@ -59,7 +63,7 @@ export interface UserStore {
   remove(id: string): Promise<void>;
 }
 
-export type Mail = { to: string; subject: string; text: string };
+export type Mail = { to: string; subject: string; text: string; html?: string };
 export type SendMail = (mail: Mail) => Promise<void>;
 
 export const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
@@ -192,7 +196,7 @@ export interface Deps {
   hashCost?: number;
 }
 
-const canEmail = (user: UserRecord, now: Date) => !user.lastEmailAt || now.getTime() - user.lastEmailAt.getTime() >= EMAIL_COOLDOWN_MS;
+export const canEmail = (user: UserRecord, now: Date) => !user.lastEmailAt || now.getTime() - user.lastEmailAt.getTime() >= EMAIL_COOLDOWN_MS;
 
 async function issueVerification(deps: Deps, user: Pick<UserRecord, 'id' | 'email' | 'firstName'>, now: Date) {
   const token = randomBytes(32).toString('hex');
@@ -374,6 +378,7 @@ export async function accountSettings(deps: Pick<Deps, 'store'>, userId: string)
     twoFactorSince: user.totpEnabledAt?.toISOString() ?? null,
     recoveryCodesLeft: user.recoveryCodeHashes?.length ?? 0,
     plan: planOf(user.plan),
+    weeklyEmail: !!user.weeklyEmail,
   };
 }
 

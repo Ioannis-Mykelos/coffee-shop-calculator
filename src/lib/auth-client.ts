@@ -104,6 +104,8 @@ export interface AccountSettings {
   twoFactorSince: string | null;
   recoveryCodesLeft: number;
   plan: Plan;
+  /** Whether they get the Monday email */
+  weeklyEmail: boolean;
   /** Whether the site offers email + password log in (only when it can send emails) */
   emailLogin: boolean;
 }
@@ -134,6 +136,9 @@ async function postSettings<R extends string>(url: string, body: unknown): Promi
 
 export const changeMyPassword = (current: string, next: string) =>
   postSettings<'changed' | 'wrong-password' | 'no-password'>('/api/account/password', { current, next });
+
+export const setWeeklyEmail = (on: boolean) => postSettings<'on' | 'off'>('/api/account/weekly-email', { action: on ? 'on' : 'off' });
+export const sendTestWeeklyEmail = () => postSettings<'sent' | 'too-soon' | 'no-account'>('/api/account/weekly-email', { action: 'test' });
 
 /** Two-step login, step by step (see app/api/account/two-step). */
 export const startTwoStep = (password: string) => postTwoStep<{ secret: string; uri: string; qr: boolean[][] }>({ action: 'start', password });
