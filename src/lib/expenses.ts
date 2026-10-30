@@ -45,7 +45,17 @@ export const CATEGORIES: Category[] = [
 export const LINE_CATEGORIES: LineCategoryKey[] = ["premises", "utilities", "other"];
 
 export interface LineItem { id: string; label: string; amount: string }
-export interface SupplyItem { id: string; label: string; qty: string; unit: string; price: string }
+/** A supply's price going from one figure to another, on a "YYYY-MM-DD" date. */
+export interface PriceChange { date: string; from: string; to: string }
+export interface SupplyItem {
+  id: string;
+  label: string;
+  qty: string;
+  unit: string;
+  price: string;
+  /** Past price changes, oldest first (lib/price-history). Items that never changed have none. */
+  priceHistory?: PriceChange[];
+}
 export interface StaffItem { id: string; role: string; type: "FT" | "PT"; count: string; hours: string; rate: string; ins: string }
 /** How much of one supply item goes into one cup, in that item's unit. */
 export interface RecipeItem { id: string; supplyId: string; qty: string }
@@ -289,6 +299,9 @@ export function defaultCup(supplies: SupplyItem[]): CupSettings {
   }
   return { recipe, margin: "30", vat: "" };
 }
+
+/** A new month: a copy of `m`, minus its sales. */
+export const nextMonth = (m: MonthData): MonthData => ({ ...structuredClone(m), revenue: "", takings: {} });
 
 /** Fill in fields added after a month was saved. */
 export function withDefaults(
