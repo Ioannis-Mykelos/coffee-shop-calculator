@@ -128,6 +128,7 @@ Server code is in [`src/lib/server`](src/lib/server), guarded by `server-only`; 
 - **Sessions**: an httpOnly JWT cookie for 30 days, or 12 hours without "Keep me logged in". A password change or reset, or deleting the account, ends every older session.
 - **Rate limits**: log in 10 tries per address and 30 per IP every 15 minutes; sign-up, resend, forgot and reset per IP per hour; account settings 10 password checks per 15 minutes. Account emails are throttled to one a minute per address. With Upstash Redis set (`UPSTASH_REDIS_REST_*`), every server instance shares the counts; otherwise each counts in its own memory.
 - **Open redirects**: `/login?next=` only accepts paths on this site ([`next-path.ts`](src/lib/next-path.ts)).
+- **Plans**: each account is free or Pro (no stored plan means free), and `isPro()` in [`plan.ts`](src/lib/plan.ts) is the one check for Pro features. During the beta it says yes to everyone, so nothing is hidden; turn off `BETA_EVERYONE_PRO` to start locking features. The plan isn't editable through the API.
 - **Headers**: `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Strict-Transport-Security` and `Permissions-Policy` on every response ([`next.config.ts`](next.config.ts)).
 
 ## How figures are saved
@@ -217,6 +218,7 @@ crema/
 │   │   ├── takings.ts             each day's till against the daily break-even target
 │   │   ├── what-if.ts             a change tried on the month's figures
 │   │   ├── workspace.ts           the saved shape and its checks
+│   │   ├── plan.ts                free or Pro, and the isPro() check
 │   │   ├── geo.ts                 country → currency, location lookup
 │   │   ├── xlsx.ts                dependency-free Excel writer
 │   │   ├── auth-client.ts, workspace-client.ts   browser side of the API

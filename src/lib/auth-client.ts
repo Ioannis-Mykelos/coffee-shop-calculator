@@ -1,6 +1,7 @@
 'use client';
 
 import { getSession, signIn, signOut } from 'next-auth/react';
+import type { Plan } from './plan';
 
 // Browser side of accounts (see lib/server/auth.ts and app/api/account). Local mode never calls these.
 
@@ -102,6 +103,7 @@ export interface AccountSettings {
   /** When two-step login was turned on (ISO), or null when it's off */
   twoFactorSince: string | null;
   recoveryCodesLeft: number;
+  plan: Plan;
   /** Whether the site offers email + password log in (only when it can send emails) */
   emailLogin: boolean;
 }
