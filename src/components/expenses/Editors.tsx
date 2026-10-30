@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, Trash2 } from "lucide-react"
-import { useRef } from "react"
+import { useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Field, Input, NumberInput } from "@/components/ui/input"
@@ -12,7 +12,8 @@ import {
   staffSummary,
   uid,
 } from "@/lib/expenses"
-import { dayKey, lastPriceChange, recordPriceChange } from "@/lib/price-history"
+import { priceImpact, impactSentence } from "@/lib/price-impact"
+import { dayKey, lastPriceChange, percentLabel, recordPriceChange } from "@/lib/price-history"
 import { cn } from "@/lib/utils"
 
 type Mutate = (fn: (m: MonthData) => void) => void
@@ -81,7 +82,6 @@ function PriceTrend({ item }: { item: SupplyItem }) {
   const change = lastPriceChange(item)
   if (!change) return null
   const up = change.percent > 0
-  const percent = Math.abs(change.percent).toFixed(Math.abs(change.percent) < 10 ? 1 : 0)
   const date = new Date(`${change.date}T12:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
   return (
     <span
@@ -89,13 +89,13 @@ function PriceTrend({ item }: { item: SupplyItem }) {
       className={cn("inline-flex items-center gap-0.5 font-mono font-medium", up ? "text-destructive" : "text-good")}
     >
       {up ? <ArrowUp aria-label="Up" className="size-3" /> : <ArrowDown aria-label="Down" className="size-3" />}
-      {percent}%
+      {percentLabel(change.percent)}
     </span>
   )
 }
 
 /** The price, noted in the item's history when the owner leaves the field, so half-typed figures aren't recorded. */
-function PriceField({ item, list, mutate }: { item: SupplyItem; list: "supplies" | "consumables"; mutate: Mutate }) {
+function PriceField({ item, list, mutate, onChanged }: { item: SupplyItem; list: "supplies" | "consumables"; mutate: Mutate; onChanged: () => void }) {
   const before = useRef(item.price)
   return (
     <Field
@@ -122,6 +122,7 @@ function PriceField({ item, list, mutate }: { item: SupplyItem; list: "supplies"
             const it = m[list].find((x) => x.id === item.id)
             if (it) recordPriceChange(it, from, it.price, dayKey(new Date()))
           })
+          onChanged()
         }}
       />
     </Field>
@@ -144,6 +145,9 @@ export function SuppliesEditor({
   placeholder?: string
   addLabel?: string
 }) {
+  // The impact shows for the item just changed; a line under every item that ever changed would bury the list.
+  const [changedId, setChangedId] = useState<string | null>(null)
+  const impact = changedId ? priceImpact(month, changedId) : null
   return (
     <div className="flex flex-col gap-2.5">
       {month[list].map((it) => (
@@ -157,7 +161,7 @@ export function SuppliesEditor({
           <Field label="Unit" className="flex-[0_1_80px]">
             <Input className="px-2.5" value={it.unit} onChange={setField(mutate, list, it.id, "unit")} placeholder="pcs" />
           </Field>
-          <PriceField item={it} list={list} mutate={mutate} />
+          <PriceField item={it} list={list} mutate={mutate} onChanged={() => setChangedId(it.id)} />
           <div className="flex flex-[0_1_120px] flex-col gap-1 text-xs text-muted-foreground">
             Line total
             <div className="flex h-11 items-center justify-end font-mono text-[15px] font-medium text-foreground">
@@ -165,6 +169,11 @@ export function SuppliesEditor({
             </div>
           </div>
           <RemoveButton label={it.label} onClick={removeItem(mutate, list, it.id)} />
+          {impact && it.id === changedId && (
+            <p role="status" className="m-0 basis-full text-[13px] text-muted-foreground">
+              {impactSentence(impact)}
+            </p>
+          )}
         </div>
       ))}
       <Button
